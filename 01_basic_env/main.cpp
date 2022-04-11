@@ -7,25 +7,7 @@ int main()
 {
     Win32Utils utils;
     HWND hwnd = utils.CreateWin32Window(800, 600);
-
-    //----OpenGL 绑定windows窗口----------
-	HDC dc = GetDC(hwnd);
-	PIXELFORMATDESCRIPTOR pfd;
-	memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
-
-	pfd.nVersion = 1;
-	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_TYPE_RGBA | PFD_DOUBLEBUFFER;
-	pfd.iLayerType = PFD_MAIN_PLANE;
-	pfd.iPixelType = PFD_TYPE_RGBA;
-	pfd.cColorBits = 32;
-	pfd.cDepthBits = 24;
-	pfd.cStencilBits = 8;
-
-	int pixelFormatID = ChoosePixelFormat(dc, &pfd);
-	SetPixelFormat(dc, pixelFormatID, &pfd);
-
-	HGLRC rc = wglCreateContext(dc);
-	wglMakeCurrent(dc, rc);
+	HDC dc = utils.bindWindowWithOpenGL();
 
 	glClearColor(41.0f/255.0f, 71.0f/255.0f, 121.0f/255.0f, 1.0f);
 
