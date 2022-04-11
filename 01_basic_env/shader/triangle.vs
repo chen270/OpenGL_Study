@@ -1,14 +1,7 @@
-#version 330 core
-attribute vec3 pos;
-attribute vec4 color;
-
-uniform mat4 M;
-uniform mat4 V;
-uniform mat4 P;
-
-varying vec4 V_Color;
+﻿#version 330 core
+layout (location=0) in vec3 aPos;
 
 void main()
 {
-    gl_Position=P*V*M*vec4(pos,1.0);
+    gl_Position=vec4(aPos.x,aPos.y,aPos.z,1.0);
 }

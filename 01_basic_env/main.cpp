@@ -1,17 +1,34 @@
 #include <windows.h>
+#include <iostream>
+#include "glew/glew.h"
 #include <gl/GL.h>
 #include "utils/win32_common.h"
 #include "utils/fixRenderer.h"
+#include "utils/glRenderer.h"
+
+#ifndef SHADER_PATH
+#error shader path not define!
+#else
+#define S_PATH(str) SHADER_PATH##str
+#endif
 
 int main()
 {
     Win32Utils utils;
-    HWND hwnd = utils.CreateWin32Window(800, 600);
+	GLRenderer glRender;
+	
+	HWND hwnd = utils.CreateWin32Window(800, 600);
 	HDC dc = utils.bindWindowWithOpenGL();
+	glRender.GLInit();
 
 	glClearColor(41.0f/255.0f, 71.0f/255.0f, 121.0f/255.0f, 1.0f);
 
-    FixRenderer::Rendererinit();
+	//FixRenderer::Rendererinit();
+	GLuint VBO, VAO, EBO;
+	GLuint program;
+	glRender.initTriangle();
+	glRender.GetRendererObject(VAO, VBO, EBO);
+	program = glRender.CreateGPUProgram(S_PATH("triangle.vs"), S_PATH("triangle.frag"));
 	//----OpenGL end   ----------
 
 	ShowWindow(hwnd, SW_SHOW);
@@ -33,12 +50,13 @@ int main()
 		}
 
 		//----OpenGL start-----
-
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		FixRenderer::Draw();
+		//FixRenderer::Draw();
+		glUseProgram(program);
+		glBindVertexArray(VAO);
+		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
-		//glClear(GL_COLOR_BUFFER_BIT);
 		SwapBuffers(dc);
 		//----OpenGL end  -----
 	}

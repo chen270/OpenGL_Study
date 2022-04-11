@@ -28,6 +28,10 @@ add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
 ENDIF(MSVC)
 
+# 通过宏命令传递shader路径给主程序
+add_definitions(-DSHADER_PATH="${CMAKE_CURRENT_SOURCE_DIR}/shader/")
+
+
 SET(INSTALL_PATH "${PROJECT_SOURCE_DIR}/bin")
 
 LINK_DIRECTORIES("${PROJECT_SOURCE_DIR}/bin") #指定链接路径
