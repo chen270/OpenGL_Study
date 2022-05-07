@@ -29,8 +29,6 @@ GLRenderer::~GLRenderer()
 	glDeleteProgram(program);
 }
 
-#define GL_CALL(x)      do{x; GLRenderer::CheckGLError(__FILE__, __LINE__);}while(0);
-#define GL_CHECK_ERROR  GLRenderer::CheckGLError(__FILE__, __LINE__);
 void GLRenderer::CheckGLError(const char * file, int line)
 {
     GLenum error = glGetError();
@@ -240,7 +238,7 @@ void GLRenderer::SetShaderQualifiers()
 	glUseProgram(program);
 	glUniformMatrix4fv(MLocation, 1, GL_FALSE, identity);
 	glUniformMatrix4fv(VLocation, 1, GL_FALSE, identity);
-	glUniformMatrix4fv(PLocation, 1, GL_FALSE, glm::value_ptr(projection));
+	glUniformMatrix4fv(PLocation, 1, GL_FALSE, glm::value_ptr(projection)); // CPU -> copy -> GPU
 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glEnableVertexAttribArray(posLocation);

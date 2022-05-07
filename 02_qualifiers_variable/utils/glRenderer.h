@@ -28,3 +28,5 @@ private:
 	char* fsCode;
 };
 
+#define GL_CALL(x)      do{x; GLRenderer::CheckGLError(__FILE__, __LINE__);}while(0);
+#define GL_CHECK_ERROR  GLRenderer::CheckGLError(__FILE__, __LINE__);
