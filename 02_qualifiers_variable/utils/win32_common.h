@@ -1,5 +1,7 @@
-#include <windows.h>
+#ifndef __WIN32_COMMON_H__
+#define __WIN32_COMMON_H__
 
+#include <windows.h>
 
 class Win32Utils
 {
@@ -15,3 +17,4 @@ public:
     HDC  dc;
 };
 
+#endif // __WIN32_COMMON_H__

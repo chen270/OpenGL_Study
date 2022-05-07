@@ -1,3 +1,6 @@
+#ifndef __GLRENDERER_H__
+#define __GLRENDERER_H__
+
 #include <windows.h>
 #include <gl/GL.h>
 
@@ -26,3 +29,5 @@ private:
 	char* fsCode;
 };
 
+
+#endif // __GLRENDERER_H__

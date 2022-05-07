@@ -1,3 +1,5 @@
+#ifndef __FIXRENDERER_H__
+#define __FIXRENDERER_H__
 
 class FixRenderer
 {
@@ -11,3 +13,4 @@ public:
     static void Draw();
 };
 
+#endif // __FIXRENDERER_H__

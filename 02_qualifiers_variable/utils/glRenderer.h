@@ -1,3 +1,6 @@
+#ifndef __GLRENDERER_H__
+#define __GLRENDERER_H__
+
 #include <windows.h>
 #include <gl/GL.h>
 
@@ -30,3 +33,5 @@ private:
 
 #define GL_CALL(x)      do{x; GLRenderer::CheckGLError(__FILE__, __LINE__);}while(0);
 #define GL_CHECK_ERROR  GLRenderer::CheckGLError(__FILE__, __LINE__);
+
+#endif // __GLRENDERER_H__
