@@ -20,9 +20,9 @@ void main()
 {
     V_Normal = mat3(NM) * normal;//局部坐标系转成世界坐标系
     
-	V_WorldPos = M * vec4(pos, 1.0);//当前点的世界坐标
+    V_WorldPos = M * vec4(pos, 1.0);//当前点的世界坐标
 
-	V_Texcoord = texcoord;
+    V_Texcoord = texcoord;
 
     gl_Position=P*V*M*vec4(pos,1.0);
 }
