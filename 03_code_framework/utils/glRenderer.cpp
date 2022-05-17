@@ -303,6 +303,13 @@ int GLRenderer::InitModel(ShaderParameters* sp)
 	sp->modelMsg.mvp->projection = glm::perspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
 	sp->modelMsg.mvp->normalMatrix = glm::inverseTranspose(sp->modelMsg.mvp->model);
 
+	// 6.opengl 环境设置
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glEnable(GL_DEPTH_TEST);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	return 0;
 }
 
