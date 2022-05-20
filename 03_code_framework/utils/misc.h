@@ -9,9 +9,9 @@
 
 struct VertexData
 {
-	float pos[3];
-	float texcoord[2];
-	float normal[3];
+    float pos[3];
+    float texcoord[2];
+    float normal[3];
 };
 
 class misc

@@ -1,43 +1,46 @@
-#include "glew/glew.h"
 #include "glRenderer.h"
-#include "misc.h"
 #include <stdio.h>
 #include <iostream>
 #include "Glm/glm.hpp" // 数学库，计算矩阵
 #include "Glm/ext.hpp"
+#include "utils/gpuProgram.h"
+#include "misc.h"
 
 struct Vertex
 {
-	float pos[3];
-	float color[4] = {1.0f,1.0f,1.0f,1.0f}; // 默认白色
+    float pos[3];
+    float color[4] = { 1.0f,1.0f,1.0f,1.0f }; // 默认白色
 };
 
 struct MVPMatrix
 {
-	glm::mat4 model;
-	glm::mat4 projection;
-	glm::mat4 normalMatrix;
+    glm::mat4 model;
+    glm::mat4 projection;
+    glm::mat4 normalMatrix;
 };
 
 
-GLRenderer::GLRenderer(/* args */)
+GLRenderer::GLRenderer(/* args */) :
+    VAO(0), VBO(0), EBO(0),
+    vsCode(nullptr), fsCode(nullptr),
+    gpuProgram(nullptr)
 {
-	VAO = 0;
-	VBO = 0;
-	EBO = 0;
-
-	vsCode = nullptr;
-	fsCode = nullptr;
 }
 
 GLRenderer::~GLRenderer()
 {
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+
+    if (gpuProgram != nullptr)
+    {
+        delete gpuProgram;
+        gpuProgram = nullptr;
+    }
 }
 
-void GLRenderer::CheckGLError(const char * file, int line)
+void GLRenderer::CheckGLError(const char* file, int line)
 {
     GLenum error = glGetError();
     if (error != GL_NO_ERROR) {
@@ -73,269 +76,280 @@ void GLRenderer::CheckGLError(const char * file, int line)
 
 int GLRenderer::GLInit()
 {
-	/*
-	* 初始化glew之前，需要一个OpenGL的环境，需要调用wglMakeCurrent
-	  在初始化GLEW之前设置glewExperimental变量的值为GL_TRUE，
-	  这样做能让GLEW在管理OpenGL的函数指针时更多地使用现代化的技术，
-	  如果把它设置为GL_FALSE的话可能会在使用OpenGL的核心模式时出现一些问题。
-	*/
-	glewExperimental = GL_TRUE;
-	if (glewInit() != GLEW_OK)
-	{
-		std::cout << "Failed to initialize GLEW" << std::endl;
-		return -1;
-	}
+    /*
+    * 初始化glew之前，需要一个OpenGL的环境，需要调用wglMakeCurrent
+      在初始化GLEW之前设置glewExperimental变量的值为GL_TRUE，
+      这样做能让GLEW在管理OpenGL的函数指针时更多地使用现代化的技术，
+      如果把它设置为GL_FALSE的话可能会在使用OpenGL的核心模式时出现一些问题。
+    */
+    glewExperimental = GL_TRUE;
+    if (glewInit() != GLEW_OK)
+    {
+        std::cout << "Failed to initialize GLEW" << std::endl;
+        return -1;
+    }
 
-	return 0;
+    // init opengl var
+    gpuProgram = new GPUProgram();
+
+    return 0;
 }
 
 
 int GLRenderer::InitTriangle()
 {
-	Vertex vertex[3]; // 颜色默认白色
-	vertex[0].pos[0] = 0.0f;
-	vertex[0].pos[1] = 0.0f;
-	vertex[0].pos[2] = -100.0f;
+    Vertex vertex[3]; // 颜色默认白色
+    vertex[0].pos[0] = 0.0f;
+    vertex[0].pos[1] = 0.0f;
+    vertex[0].pos[2] = -100.0f;
 
-	vertex[1].pos[0] = 10.0f;
-	vertex[1].pos[1] = 0.0f;
-	vertex[1].pos[2] = -100.0f;
+    vertex[1].pos[0] = 10.0f;
+    vertex[1].pos[1] = 0.0f;
+    vertex[1].pos[2] = -100.0f;
 
-	vertex[2].pos[0] = 0.0f;
-	vertex[2].pos[1] = 10.0f;
-	vertex[2].pos[2] = -100.0f;
+    vertex[2].pos[0] = 0.0f;
+    vertex[2].pos[1] = 10.0f;
+    vertex[2].pos[2] = -100.0f;
 
-	unsigned int indexes[] = { 0,1,2 }; // 连接顺序0-1-2
+    unsigned int indexes[] = { 0,1,2 }; // 连接顺序0-1-2
 
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
 
-	// 1. 绑定VAO
-	// bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-	glBindVertexArray(VAO);
+    // 1. 绑定VAO
+    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+    glBindVertexArray(VAO);
 
-	// 2. 把顶点数组复制到缓冲中供OpenGL使用
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 3, vertex, GL_STATIC_DRAW); // 3个点，传入显卡
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // 2. 把顶点数组复制到缓冲中供OpenGL使用
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 3, vertex, GL_STATIC_DRAW); // 3个点，传入显卡
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// 用glBufferData把索引复制到缓冲里
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indexes), indexes, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    // 用glBufferData把索引复制到缓冲里
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indexes), indexes, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	glBindVertexArray(0);
+    glBindVertexArray(0);
 
-	GL_CHECK_ERROR;
-	return 0;
+    GL_CHECK_ERROR;
+    return 0;
 }
 
 void GLRenderer::SetTriangle_ShaderQualifiers(const GLuint& program)
 {
-	// 单位矩阵
-	float identity[] = {
-		1,0,0,0,
-		0,1,0,0,
-		0,0,1,0,
-		0,0,0,1
-	};
+    // 单位矩阵
+    float identity[] = {
+        1,0,0,0,
+        0,1,0,0,
+        0,0,1,0,
+        0,0,0,1
+    };
 
-	// 计算投影矩阵
-	glm::mat4 projection = glm::perspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    // 计算投影矩阵
+    glm::mat4 projection = glm::perspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
 
-	GLint posLocation, colorLocation, MLocation, VLocation, PLocation;
-	posLocation = glGetAttribLocation(program, "pos");
-	colorLocation = glGetAttribLocation(program, "color"); // 不使用的话，可能会被编译器优化掉
+    GLint posLocation, colorLocation, MLocation, VLocation, PLocation;
+    posLocation = glGetAttribLocation(program, "pos");
+    colorLocation = glGetAttribLocation(program, "color"); // 不使用的话，可能会被编译器优化掉
 
-	MLocation = glGetUniformLocation(program, "M");
-	VLocation = glGetUniformLocation(program, "V");
-	PLocation = glGetUniformLocation(program, "P");
+    MLocation = glGetUniformLocation(program, "M");
+    VLocation = glGetUniformLocation(program, "V");
+    PLocation = glGetUniformLocation(program, "P");
 
-	// 编译命令
-	glUseProgram(program);
-	glUniformMatrix4fv(MLocation, 1, GL_FALSE, identity);
-	glUniformMatrix4fv(VLocation, 1, GL_FALSE, identity);
-	glUniformMatrix4fv(PLocation, 1, GL_FALSE, glm::value_ptr(projection)); // CPU -> copy -> GPU
+    // 编译命令
+    glUseProgram(program);
+    glUniformMatrix4fv(MLocation, 1, GL_FALSE, identity);
+    glUniformMatrix4fv(VLocation, 1, GL_FALSE, identity);
+    glUniformMatrix4fv(PLocation, 1, GL_FALSE, glm::value_ptr(projection)); // CPU -> copy -> GPU
 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glEnableVertexAttribArray(posLocation);
-	glVertexAttribPointer(posLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(0)); // 每个点间隔Vertex大小,从0开始
-	glEnableVertexAttribArray(colorLocation);
-	glVertexAttribPointer(colorLocation, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(sizeof(float) * 3)); // 每个点间隔Vertex大小,起点是sizeof(float)*3即pos后面
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glEnableVertexAttribArray(posLocation);
+    glVertexAttribPointer(posLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(0)); // 每个点间隔Vertex大小,从0开始
+    glEnableVertexAttribArray(colorLocation);
+    glVertexAttribPointer(colorLocation, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(sizeof(float) * 3)); // 每个点间隔Vertex大小,起点是sizeof(float)*3即pos后面
 
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glUseProgram(0); // 重置
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glUseProgram(0); // 重置
 
-	GL_CHECK_ERROR;
+    GL_CHECK_ERROR;
 }
 
-int GLRenderer::InitModel(ShaderParameters* sp, const GLuint& program)
+int GLRenderer::InitModel(ShaderParameters* sp)
 {
-	// 1.load model
-	// load vertexes, vertex count, indexes, index count;
-	unsigned int * indexData = nullptr;
-	int vertexCount = 0, indexCount = 0;
-	VertexData * vertexData = misc::LoadObjModel(S_PATH("resource/model/sphere.obj"), &indexData, vertexCount, indexCount);
-	if (nullptr == vertexData) {
-		printf("load obj model failed\n");
-		return -1;
-	}
+    // 0.get Program
+    if (nullptr == gpuProgram)
+        return 0;
+    gpuProgram->AttachShader(GL_VERTEX_SHADER, S_PATH("shader/texture.vs"));
+    gpuProgram->AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/texture.fs"));
+    gpuProgram->Link();
+    GLuint program = gpuProgram->GetGPUProgram();
 
-	sp->modelMsg.vertexData = vertexData;
-	sp->modelMsg.indexData = indexData;
-	sp->modelMsg.vertexCount = vertexCount;
-	sp->modelMsg.indexCount = indexCount;
+    // 1.load model
+    // load vertexes, vertex count, indexes, index count;
+    unsigned int* indexData = nullptr;
+    int vertexCount = 0, indexCount = 0;
+    VertexData* vertexData = misc::LoadObjModel(S_PATH("resource/model/sphere.obj"), &indexData, vertexCount, indexCount);
+    if (nullptr == vertexData) {
+        printf("load obj model failed\n");
+        return -1;
+    }
 
-	// 2.设置VBO IBO
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
+    sp->modelMsg.vertexData = vertexData;
+    sp->modelMsg.indexData = indexData;
+    sp->modelMsg.vertexCount = vertexCount;
+    sp->modelMsg.indexCount = indexCount;
 
-	glBindVertexArray(VAO);
+    // 2.设置VBO IBO
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexData) * vertexCount, vertexData, GL_STATIC_DRAW); // 传入显卡
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(VAO);
 
-	// 用glBufferData把索引复制到缓冲里
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indexCount, indexData, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(VertexData) * vertexCount, vertexData, GL_STATIC_DRAW); // 传入显卡
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	glBindVertexArray(0);
-	GL_CHECK_ERROR;
+    // 用glBufferData把索引复制到缓冲里
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indexCount, indexData, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	// 3.传递参数到shader
-	sp->posLoc = glGetAttribLocation(program, "pos");
-	sp->texcoordLoc = glGetAttribLocation(program, "texcoord");
-	sp->normalLoc = glGetAttribLocation(program, "normal");
+    glBindVertexArray(0);
+    GL_CHECK_ERROR;
 
-	sp->MLoc = glGetUniformLocation(program, "M");
-	sp->VLoc = glGetUniformLocation(program, "V");
-	sp->PLoc = glGetUniformLocation(program, "P");
-	sp->NormalMatrixLoc = glGetUniformLocation(program, "NM");
-	sp->textureLoc = glGetUniformLocation(program, "U_MainTexture");
-	GL_CHECK_ERROR;
+    // 3.传递参数到shader
+    sp->posLoc = glGetAttribLocation(program, "pos");
+    sp->texcoordLoc = glGetAttribLocation(program, "texcoord");
+    sp->normalLoc = glGetAttribLocation(program, "normal");
 
-	// 4.根据图片创建纹理
-	sp->imgTex = CreateTextureFromFile(S_PATH("resource/image/earth.bmp"));
+    sp->MLoc = glGetUniformLocation(program, "M");
+    sp->VLoc = glGetUniformLocation(program, "V");
+    sp->PLoc = glGetUniformLocation(program, "P");
+    sp->NormalMatrixLoc = glGetUniformLocation(program, "NM");
+    sp->textureLoc = glGetUniformLocation(program, "U_MainTexture");
+    GL_CHECK_ERROR;
 
-	// 5.初始化 mvp
-	sp->modelMsg.mvp = new MVPMatrix();
-	sp->modelMsg.mvp->model = glm::translate(0.0f, 0.0f, -4.0f);
-	sp->modelMsg.mvp->projection = glm::perspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
-	sp->modelMsg.mvp->normalMatrix = glm::inverseTranspose(sp->modelMsg.mvp->model);
+    // 4.根据图片创建纹理
+    sp->imgTex = CreateTextureFromFile(S_PATH("resource/image/earth.bmp"));
 
-	// 6.opengl 环境设置
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glEnable(GL_DEPTH_TEST);
+    // 5.初始化 mvp
+    sp->modelMsg.mvp = new MVPMatrix();
+    sp->modelMsg.mvp->model = glm::translate(0.0f, 0.0f, -4.0f);
+    sp->modelMsg.mvp->projection = glm::perspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    sp->modelMsg.mvp->normalMatrix = glm::inverseTranspose(sp->modelMsg.mvp->model);
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    // 6.opengl 环境设置
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
 
-	return 0;
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    return 0;
 }
 
-int GLRenderer::UpdateModel(ShaderParameters &sp, float &angle, const GLuint& program)
+int GLRenderer::UpdateModel(ShaderParameters& sp, float& angle)
 {
-	angle += 1.0f;
-	if (angle > 360.0f)
-		angle = 0;
-	glm::mat4 model = glm::translate(0.0f, 0.0f, -4.0f) * glm::rotate(angle, 0.0f, 1.0f, 0.0f);
-	glm::mat4 normalMatrix = glm::inverseTranspose(model);
+    angle += 1.0f;
+    if (angle > 360.0f)
+        angle = 0;
+    glm::mat4 model = glm::translate(0.0f, 0.0f, -4.0f) * glm::rotate(angle, 0.0f, 1.0f, 0.0f);
+    glm::mat4 normalMatrix = glm::inverseTranspose(model);
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// 编译命令
-	glUseProgram(program);
-	glUniformMatrix4fv(sp.MLoc, 1, GL_FALSE, glm::value_ptr(model));	  // M model,模型视图移动，
-	glUniformMatrix4fv(sp.VLoc, 1, GL_FALSE, identity);					  // V visual 视口
-	glUniformMatrix4fv(sp.PLoc, 1, GL_FALSE, glm::value_ptr(sp.modelMsg.mvp->projection)); // 投影
-	glUniformMatrix4fv(sp.NormalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
-	GL_CHECK_ERROR;
+    // 编译命令
+    glUseProgram(gpuProgram->GetGPUProgram());
+    glUniformMatrix4fv(sp.MLoc, 1, GL_FALSE, glm::value_ptr(model));      // M model,模型视图移动，
+    glUniformMatrix4fv(sp.VLoc, 1, GL_FALSE, identity);                      // V visual 视口
+    glUniformMatrix4fv(sp.PLoc, 1, GL_FALSE, glm::value_ptr(sp.modelMsg.mvp->projection)); // 投影
+    glUniformMatrix4fv(sp.NormalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    GL_CHECK_ERROR;
 
-	glBindTexture(GL_TEXTURE_2D, sp.imgTex);
-	glUniform1i(sp.textureLoc, 0);
+    glBindTexture(GL_TEXTURE_2D, sp.imgTex);
+    glUniform1i(sp.textureLoc, 0);
 
-	glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
-	glEnableVertexAttribArray(sp.posLoc);
-	glVertexAttribPointer(sp.posLoc, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void *>(0)); // 每个点间隔VertexData大小,从0开始
-	glEnableVertexAttribArray(sp.texcoordLoc);
-	glVertexAttribPointer(sp.texcoordLoc, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void *>(sizeof(float) * 3));
-	glEnableVertexAttribArray(sp.normalLoc);
-	glVertexAttribPointer(sp.normalLoc, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void *>(sizeof(float) * 5));
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	GL_CHECK_ERROR;
+    glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
+    glEnableVertexAttribArray(sp.posLoc);
+    glVertexAttribPointer(sp.posLoc, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void*>(0)); // 每个点间隔VertexData大小,从0开始
+    glEnableVertexAttribArray(sp.texcoordLoc);
+    glVertexAttribPointer(sp.texcoordLoc, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void*>(sizeof(float) * 3));
+    glEnableVertexAttribArray(sp.normalLoc);
+    glVertexAttribPointer(sp.normalLoc, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void*>(sizeof(float) * 5));
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    GL_CHECK_ERROR;
 
-	// IBO
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
-	glDrawElements(GL_TRIANGLES, sp.modelMsg.indexCount, GL_UNSIGNED_INT, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    // IBO
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
+    glDrawElements(GL_TRIANGLES, sp.modelMsg.indexCount, GL_UNSIGNED_INT, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	GL_CHECK_ERROR;
+    GL_CHECK_ERROR;
 
-	glUseProgram(0); // 重置
-	return 0;
+    glUseProgram(0); // 重置
+    return 0;
 }
 
-void GLRenderer::GetRendererObject(GLuint &vao, GLuint &vbo, GLuint &ebo)
+void GLRenderer::GetRendererObject(GLuint& vao, GLuint& vbo, GLuint& ebo)
 {
-	vao = this->VAO;
-	vbo = this->VBO;
-	ebo = this->EBO;
+    vao = this->VAO;
+    vbo = this->VBO;
+    ebo = this->EBO;
 }
 
-GLuint GLRenderer::CreateTextureFromFile(const char *imagePath)
+GLuint GLRenderer::CreateTextureFromFile(const char* imagePath)
 {
-	unsigned char *imageData = nullptr;
-	misc::LoadFileContent(imagePath, (char**)&imageData);
+    unsigned char* imageData = nullptr;
+    misc::LoadFileContent(imagePath, (char**)&imageData);
 
-	// decode bmp
-	int width = 0, height = 0;
-	unsigned char *pixelData = nullptr;
-	int pixelDataSize = 0;
-	GLenum srcFormat = GL_RGB;
+    // decode bmp
+    int width = 0, height = 0;
+    unsigned char* pixelData = nullptr;
+    int pixelDataSize = 0;
+    GLenum srcFormat = GL_RGB;
 
-	if (*((unsigned short *)imageData) == 0x4D42) // 判断前两个字节是否是 4D42，是的话就是bmp文件
-	{
-		pixelData = misc::DecodeBMPData(imageData, width, height);
-	}
-	else if (memcmp(imageData, "DDS ", 4) == 0)
-	{
-		pixelData = misc::DecodeDXT1Data(imageData, width, height, pixelDataSize);
-		srcFormat = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-	}
+    if (*((unsigned short*)imageData) == 0x4D42) // 判断前两个字节是否是 4D42，是的话就是bmp文件
+    {
+        pixelData = misc::DecodeBMPData(imageData, width, height);
+    }
+    else if (memcmp(imageData, "DDS ", 4) == 0)
+    {
+        pixelData = misc::DecodeDXT1Data(imageData, width, height, pixelDataSize);
+        srcFormat = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
+    }
 
-	if (pixelData == nullptr)
-	{
-		printf("cannot decode %s\n", imagePath);
-		delete imageData;
-		return 0;
-	}
+    if (pixelData == nullptr)
+    {
+        printf("cannot decode %s\n", imagePath);
+        delete imageData;
+        return 0;
+    }
 
-	GLuint texture;
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture); // 默认激活
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture); // 默认激活
 
-	// 过滤条件
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // 过滤条件
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	if (srcFormat == GL_RGB)
-	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixelData);
-	}
-	else if (srcFormat == GL_COMPRESSED_RGBA_S3TC_DXT1_EXT)
-	{
-		glCompressedTexImage2D(GL_TEXTURE_2D, 0, srcFormat, width, height, 0, pixelDataSize, pixelData);
-	}
+    if (srcFormat == GL_RGB)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixelData);
+    }
+    else if (srcFormat == GL_COMPRESSED_RGBA_S3TC_DXT1_EXT)
+    {
+        glCompressedTexImage2D(GL_TEXTURE_2D, 0, srcFormat, width, height, 0, pixelDataSize, pixelData);
+    }
 
-	glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
-	delete imageData;
-	return texture;
+    delete imageData;
+    return texture;
 }

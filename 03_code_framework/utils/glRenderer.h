@@ -2,9 +2,11 @@
 #define __GLRENDERER_H__
 
 #include <windows.h>
+#include "glew/glew.h"
 #include <gl/GL.h>
 
 class ShaderParameters;
+class GPUProgram;
 
 class GLRenderer
 {
@@ -17,25 +19,27 @@ public:
     int    InitTriangle();
     void   GetRendererObject(GLuint& vao, GLuint& vbo, GLuint& ebo);
     void   SetTriangle_ShaderQualifiers(const GLuint& program);
-    int    InitModel(ShaderParameters* sp, const GLuint& program);
-    int    UpdateModel(ShaderParameters &sp, float &angle, const GLuint& program);
+    int    InitModel(ShaderParameters* sp);
+    int    UpdateModel(ShaderParameters &sp, float &angle);
 
     static void CheckGLError(const char *file, int line);
     GLuint CreateTextureFromFile(const char *imagePath);
 
 private:
+    GPUProgram* gpuProgram;
+    GLuint mProgram;
     char infoLog[512];
     GLuint VBO, VAO, EBO;
     // GLuint program;
 
     char* vsCode;
-	char* fsCode;
+    char* fsCode;
     float identity[16] = {
-		1,0,0,0,
-		0,1,0,0,
-		0,0,1,0,
-		0,0,0,1
-	};
+        1,0,0,0,
+        0,1,0,0,
+        0,0,1,0,
+        0,0,0,1
+    };
 };
 
 #define GL_CALL(x)      do{x; GLRenderer::CheckGLError(__FILE__, __LINE__);}while(0);
@@ -112,7 +116,7 @@ public:
         int indexCount;
         void *vertexData;
         void *indexData;
-		MVPMatrix* mvp;
+        MVPMatrix* mvp;
     } modelMsg;
 };
 

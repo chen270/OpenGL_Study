@@ -16,11 +16,11 @@ FixRenderer::~FixRenderer()
 void FixRenderer::Rendererinit()
 {
     glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    glLoadIdentity();
+    gluPerspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 }
 
 void FixRenderer::Draw()

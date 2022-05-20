@@ -40,25 +40,25 @@ int misc::LoadFileContent(const char *path, char **buf)
 // 点信息
 struct VertexInfo
 {
-	float v[3];
+    float v[3];
 };
 
 // 面信息
 struct VertexDefine
 {
-	int posIndex;
-	int textcoordIndex;
-	int normalIndex;
+    int posIndex;
+    int textcoordIndex;
+    int normalIndex;
 
-	bool operator==(const VertexDefine & vd) {
-		if (vd.posIndex		  == this->posIndex		  &&
-			vd.textcoordIndex == this->textcoordIndex &&
-			vd.normalIndex    == this->normalIndex)
-		{
-			return true;
-		}
-		return false;
-	}
+    bool operator==(const VertexDefine & vd) {
+        if (vd.posIndex          == this->posIndex          &&
+            vd.textcoordIndex == this->textcoordIndex &&
+            vd.normalIndex    == this->normalIndex)
+        {
+            return true;
+        }
+        return false;
+    }
 };
 
 // Load Obj Model

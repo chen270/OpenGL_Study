@@ -1,10 +1,11 @@
 #ifndef __GPUPROGRAM_H__
 #define __GPUPROGRAM_H__
 
-#include "glew/glew.h"
 #include <stack>
 #include <unordered_map>
 #include <string>
+#include <vector>
+#include "glew/glew.h"
 
 class GPUProgram
 {
@@ -16,16 +17,14 @@ public:
     int Link();
     GLuint GetGPUProgram();
 
-    void DetectAttribute(const char * attributeName);
-    void DetectUniform(const char * uniformName);
-
-    std::unordered_map<std::string, GLint> mAttributeLoc;
-    std::unordered_map<std::string, GLint> mUniformLoc;
-
+    void DetectAttributes(std::vector<std::string>attributeNames);
+    void DetectUniforms(std::vector<std::string>uniformNames);
+    GLint GetQualfiterLoc(const char* name);
 private:
     GLuint CompileShader(GLenum shaderType, const char *shaderPath);
-    GLuint program;
+    GLuint mProgram;
     std::stack<GLuint> mAttachShader;
+    std::unordered_map<std::string, GLint> mQualfitersLoc;
 };
 
 

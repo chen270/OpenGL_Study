@@ -6,61 +6,52 @@
 #include "utils/fixRenderer.h"
 #include "utils/glRenderer.h"
 #include "utils/misc.h"
-#include "utils/gpuProgram.h"
 
 int main()
 {
-	Win32Utils utils;
-	GLRenderer glRender;
+    Win32Utils utils;
+    GLRenderer glRender;
 
-	HWND hwnd = utils.CreateWin32Window(800, 600);
-	HDC dc = utils.bindWindowWithOpenGL();
-	glRender.GLInit();
+    HWND hwnd = utils.CreateWin32Window(800, 600);
+    HDC dc = utils.bindWindowWithOpenGL();
+    glRender.GLInit();
 
-	glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+    glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
 
-	// FixRenderer::Rendererinit();
-	//GLuint VBO, VAO, EBO;
+    // FixRenderer::Rendererinit();
+    //GLuint VBO, VAO, EBO;
 
-	GPUProgram gpuProgram;
-	GLuint program;
-	gpuProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/texture.vs"));
-	gpuProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/texture.fs"));
-	gpuProgram.Link();
-	program = gpuProgram.GetGPUProgram();
-	// program = glRender.CreateGPUProgram(S_PATH("shader/texture.vs"), S_PATH("shader/texture.fs"));
+    ShaderParameters sp;
+    glRender.InitModel(&sp);
+    // glRender.SetTriangle_ShaderQualifiers();
+    // ----OpenGL end   ----------
 
-	ShaderParameters sp;
-	glRender.InitModel(&sp, program);
-	// glRender.SetTriangle_ShaderQualifiers();
-	// ----OpenGL end   ----------
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
 
-	ShowWindow(hwnd, SW_SHOW);
-	UpdateWindow(hwnd);
+    // model msg
+    float angle = 0;
 
-	// model msg
-	float angle = 0;
+    MSG msg;
+    // 防止程序退出
+    while (true)
+    {
+        // Windows Message
+        if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
 
-	MSG msg;
-	// 防止程序退出
-	while (true)
-	{
-		// Windows Message
-		if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
-		{
-			if (msg.message == WM_QUIT)
-			{
-				break;
-			}
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
+        // ----OpenGL start-----
+        glRender.UpdateModel(sp, angle);
+        SwapBuffers(dc);
+        // ----OpenGL end  -----
+    }
 
-		// ----OpenGL start-----
-		glRender.UpdateModel(sp, angle, program);
-		SwapBuffers(dc);
-		// ----OpenGL end  -----
-	}
-
-	return 0;
+    return 0;
 }
