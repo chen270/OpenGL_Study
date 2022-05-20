@@ -222,15 +222,17 @@ int GLRenderer::InitModel(ShaderParameters* sp)
     GL_CHECK_ERROR;
 
     // 3.传递参数到shader
-    sp->posLoc = glGetAttribLocation(program, "pos");
-    sp->texcoordLoc = glGetAttribLocation(program, "texcoord");
-    sp->normalLoc = glGetAttribLocation(program, "normal");
+    gpuProgram->DetectAttributes({"pos", "texcoord", "normal" });
+    sp->posLoc = gpuProgram->GetQualfiterLoc("pos");
+    sp->texcoordLoc = gpuProgram->GetQualfiterLoc("texcoord");
+    sp->normalLoc = gpuProgram->GetQualfiterLoc("normal");
 
-    sp->MLoc = glGetUniformLocation(program, "M");
-    sp->VLoc = glGetUniformLocation(program, "V");
-    sp->PLoc = glGetUniformLocation(program, "P");
-    sp->NormalMatrixLoc = glGetUniformLocation(program, "NM");
-    sp->textureLoc = glGetUniformLocation(program, "U_MainTexture");
+    gpuProgram->DetectUniforms({ "M", "V", "P", "NM", "U_MainTexture" });
+    sp->MLoc = gpuProgram->GetQualfiterLoc("M");
+    sp->VLoc = gpuProgram->GetQualfiterLoc("V");
+    sp->PLoc = gpuProgram->GetQualfiterLoc("P");
+    sp->NormalMatrixLoc = gpuProgram->GetQualfiterLoc("NM");
+    sp->textureLoc = gpuProgram->GetQualfiterLoc("U_MainTexture");
     GL_CHECK_ERROR;
 
     // 4.根据图片创建纹理

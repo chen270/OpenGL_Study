@@ -114,7 +114,7 @@ GLuint GPUProgram::GetGPUProgram()
     return this->mProgram;
 }
 
-void GPUProgram::DetectAttributes(std::vector<std::string> attributeNames)
+void GPUProgram::DetectAttributes(std::initializer_list<const char*> attributeNames)
 {
     if(mProgram == GL_FALSE)
         return;
@@ -122,12 +122,12 @@ void GPUProgram::DetectAttributes(std::vector<std::string> attributeNames)
     GLint loc = 0;
     for(const auto & str : attributeNames)
     {
-        loc = glGetAttribLocation(mProgram ,str.c_str());
+        loc = glGetAttribLocation(mProgram ,str);
         mQualfitersLoc.insert(std::pair<std::string, GLint>(str, loc));
     }
 }
 
-void GPUProgram::DetectUniforms(std::vector<std::string>uniformNames)
+void GPUProgram::DetectUniforms(std::initializer_list<const char*> uniformNames)
 {
     if(mProgram == GL_FALSE)
         return;
@@ -135,7 +135,7 @@ void GPUProgram::DetectUniforms(std::vector<std::string>uniformNames)
     GLint loc = 0;
     for(const auto & str : uniformNames)
     {
-        loc = glGetUniformLocation(mProgram ,str.c_str());
+        loc = glGetUniformLocation(mProgram ,str);
         mQualfitersLoc.insert(std::pair<std::string, GLint>(str, loc));
     }
 }

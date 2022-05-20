@@ -4,7 +4,7 @@
 #include <stack>
 #include <unordered_map>
 #include <string>
-#include <vector>
+#include <initializer_list>
 #include "glew/glew.h"
 
 class GPUProgram
@@ -17,8 +17,9 @@ public:
     int Link();
     GLuint GetGPUProgram();
 
-    void DetectAttributes(std::vector<std::string>attributeNames);
-    void DetectUniforms(std::vector<std::string>uniformNames);
+    //void DetectAttributes(std::vector<std::string>attributeNames);
+    void DetectAttributes(std::initializer_list<const char*>attributeNames);
+    void DetectUniforms(std::initializer_list<const char*>uniformNames);
     GLint GetQualfiterLoc(const char* name);
 private:
     GLuint CompileShader(GLenum shaderType, const char *shaderPath);
