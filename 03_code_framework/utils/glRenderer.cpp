@@ -35,7 +35,6 @@ GLRenderer::~GLRenderer()
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
-	glDeleteProgram(program);
 }
 
 void GLRenderer::CheckGLError(const char * file, int line)
@@ -90,80 +89,6 @@ int GLRenderer::GLInit()
 	return 0;
 }
 
-int GLRenderer::CheckCompile(GLuint vsShader)
-{
-	// check glCompileShader
-	int success;
-	glGetShaderiv(vsShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(vsShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"
-				  << infoLog << std::endl;
-		return -1;
-	}
-
-	return 0;
-}
-
-GLuint GLRenderer::CreateGPUProgram(const char *vsShaderPath, const char *fsShaderPath)
-{
-	// 创建shader对象
-	GLuint vsShader = glCreateShader(GL_VERTEX_SHADER); // 创建引用ID存储 创建的着色器
-	GLuint fsShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-	misc::LoadFileContent(vsShaderPath, &vsCode);
-	misc::LoadFileContent(fsShaderPath, &fsCode);
-
-	// ram->vram, 从内存传到显存
-	glShaderSource(vsShader, 1, &vsCode, nullptr); // 附加到着色器对象上
-	glShaderSource(fsShader, 1, &fsCode, nullptr);
-
-	// 进行GPU上编译
-	glCompileShader(vsShader); // 检查错误方法见补充
-	CheckCompile(vsShader);
-
-	glCompileShader(fsShader);
-	CheckCompile(vsShader);
-
-	// 绑定程序program
-	this->program = glCreateProgram();
-	glAttachShader(program, vsShader);
-	glAttachShader(program, fsShader);
-
-	// 链接
-	glLinkProgram(program); // 检查错误方法见补充
-
-	// check glLinkProgram
-	//  检查 shader 语法问题
-	int success = 0;
-	glGetProgramiv(program, GL_LINK_STATUS, &success);
-	if (!success)
-	{
-		memset(infoLog, 0, sizeof(infoLog) / sizeof(char));
-		glGetProgramInfoLog(program, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"
-				  << infoLog << std::endl;
-		return -1;
-	}
-
-	// 在把着色器对象链接到程序对象以后，记得解绑定和删除着色器对象
-	// 1.解绑定
-	glDetachShader(program, vsShader);
-	glDetachShader(program, fsShader);
-
-	// 2.删除
-	glDeleteShader(vsShader);
-	glDeleteShader(fsShader);
-
-	if (vsCode)
-		delete[] vsCode;
-	if (fsCode)
-		delete[] fsCode;
-
-	GL_CHECK_ERROR;
-	return this->program;
-}
 
 int GLRenderer::InitTriangle()
 {
@@ -206,7 +131,7 @@ int GLRenderer::InitTriangle()
 	return 0;
 }
 
-void GLRenderer::SetTriangle_ShaderQualifiers()
+void GLRenderer::SetTriangle_ShaderQualifiers(const GLuint& program)
 {
 	// 单位矩阵
 	float identity[] = {
@@ -246,7 +171,7 @@ void GLRenderer::SetTriangle_ShaderQualifiers()
 	GL_CHECK_ERROR;
 }
 
-int GLRenderer::InitModel(ShaderParameters* sp)
+int GLRenderer::InitModel(ShaderParameters* sp, const GLuint& program)
 {
 	// 1.load model
 	// load vertexes, vertex count, indexes, index count;
@@ -313,7 +238,7 @@ int GLRenderer::InitModel(ShaderParameters* sp)
 	return 0;
 }
 
-int GLRenderer::UpdateModel(ShaderParameters &sp, float &angle)
+int GLRenderer::UpdateModel(ShaderParameters &sp, float &angle, const GLuint& program)
 {
 	angle += 1.0f;
 	if (angle > 360.0f)

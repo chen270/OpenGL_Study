@@ -13,23 +13,20 @@ public:
     ~GLRenderer();
 
     int    GLInit();
-    GLuint CreateGPUProgram(const char * vsShaderPath, const char * fsShaderPath);
+    // GLuint CreateGPUProgram(const char * vsShaderPath, const char * fsShaderPath);
     int    InitTriangle();
     void   GetRendererObject(GLuint& vao, GLuint& vbo, GLuint& ebo);
-    void   SetTriangle_ShaderQualifiers();
-    int    InitModel(ShaderParameters* sp);
-    int    UpdateModel(ShaderParameters &sp, float &angle);
+    void   SetTriangle_ShaderQualifiers(const GLuint& program);
+    int    InitModel(ShaderParameters* sp, const GLuint& program);
+    int    UpdateModel(ShaderParameters &sp, float &angle, const GLuint& program);
 
     static void CheckGLError(const char *file, int line);
     GLuint CreateTextureFromFile(const char *imagePath);
 
 private:
-    int CheckCompile(GLuint vsShader);
-
-private:
     char infoLog[512];
     GLuint VBO, VAO, EBO;
-    GLuint program;
+    // GLuint program;
 
     char* vsCode;
 	char* fsCode;

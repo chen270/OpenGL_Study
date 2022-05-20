@@ -6,6 +6,7 @@
 #include "utils/fixRenderer.h"
 #include "utils/glRenderer.h"
 #include "utils/misc.h"
+#include "utils/gpuProgram.h"
 
 int main()
 {
@@ -20,10 +21,17 @@ int main()
 
 	// FixRenderer::Rendererinit();
 	//GLuint VBO, VAO, EBO;
+
+	GPUProgram gpuProgram;
 	GLuint program;
-	program = glRender.CreateGPUProgram(S_PATH("shader/texture.vs"), S_PATH("shader/texture.fs"));
+	gpuProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/texture.vs"));
+	gpuProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/texture.fs"));
+	gpuProgram.Link();
+	program = gpuProgram.GetGPUProgram();
+	// program = glRender.CreateGPUProgram(S_PATH("shader/texture.vs"), S_PATH("shader/texture.fs"));
+
 	ShaderParameters sp;
-	glRender.InitModel(&sp);
+	glRender.InitModel(&sp, program);
 	// glRender.SetTriangle_ShaderQualifiers();
 	// ----OpenGL end   ----------
 
@@ -49,7 +57,7 @@ int main()
 		}
 
 		// ----OpenGL start-----
-		glRender.UpdateModel(sp, angle);
+		glRender.UpdateModel(sp, angle, program);
 		SwapBuffers(dc);
 		// ----OpenGL end  -----
 	}
