@@ -1,9 +1,9 @@
 #include "fixRenderer.h"
 #include <windows.h>
 #include <gl/GL.h>
-#include <gl/GLU.h> //固定管线头文件
+#include <gl/GLU.h>  // 固定管线头文件
 
-#pragma comment(lib,"GlU32.Lib")
+#pragma comment(lib, "GlU32.Lib")
 
 FixRenderer::FixRenderer(/* args */)
 {

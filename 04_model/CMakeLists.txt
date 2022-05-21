@@ -1,8 +1,8 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.8.0)
 
 
-PROJECT(OpenGL_Code_Framework)
-SET(TARGET "OpenGL_Code_Framework")
+PROJECT(OpenGL_3DModel)
+SET(TARGET "OpenGL_3DModel")
 
 add_compile_definitions(UNICODE _UNICODE)
 

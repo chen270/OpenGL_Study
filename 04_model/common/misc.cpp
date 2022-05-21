@@ -246,3 +246,39 @@ unsigned char *misc::DecodeDXT1Data(unsigned char *imageData, int &width, int &h
 
     return pixelData;
 }
+
+
+#include "glew/glew.h"
+void misc::CheckGLError(const char* file, int line)
+{
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        // const char* errStr = (char*)gluErrorString(error);//需要glut库函数
+        const char* errStr = reinterpret_cast<const char*>(glewGetErrorString(error)); // glew库函数
+        printf("glGetError = %d(0x%x), str = %s\n", error, error, errStr);
+        switch (error)
+        {
+        case GL_INVALID_ENUM:
+            printf("GL_INVALID_ENUM, %s: %d\n", file, line);
+            break;
+        case GL_INVALID_VALUE:
+            printf("GL_INVALID_VALUE, %s: %d\n", file, line);
+            break;
+        case GL_INVALID_OPERATION:
+            printf("GL_INVALID_OPERATION, %s: %d\n", file, line);
+            break;
+        case GL_STACK_OVERFLOW:
+            printf("GL_STACK_OVERFLOW, %s: %d\n", file, line);
+            break;
+        case GL_STACK_UNDERFLOW:
+            printf("GL_STACK_UNDERFLOW, %s: %d\n", file, line);
+            break;
+        case GL_OUT_OF_MEMORY:
+            printf("GL_OUT_OF_MEMORY, %s: %d\n", file, line);
+            break;
+        default:
+            printf("Unknown Error, %s: %d\n", file, line);
+            break;
+        }
+    }
+}

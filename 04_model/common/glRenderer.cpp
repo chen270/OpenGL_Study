@@ -1,15 +1,16 @@
 #include "glRenderer.h"
 #include <stdio.h>
 #include <iostream>
-#include "Glm/glm.hpp" // 数学库，计算矩阵
+#include "Glm/glm.hpp"  // 数学库，计算矩阵
 #include "Glm/ext.hpp"
 #include "gpuProgram.h"
+#include "objModel.h"
 #include "misc.h"
 
 struct Vertex
 {
     float pos[3];
-    float color[4] = { 1.0f,1.0f,1.0f,1.0f }; // 默认白色
+    float color[4] = { 1.0f,1.0f,1.0f,1.0f };  // 默认白色
 };
 
 struct MVPMatrix
@@ -38,39 +39,11 @@ GLRenderer::~GLRenderer()
         delete gpuProgram;
         gpuProgram = nullptr;
     }
-}
 
-void GLRenderer::CheckGLError(const char* file, int line)
-{
-    GLenum error = glGetError();
-    if (error != GL_NO_ERROR) {
-        // const char* errStr = (char*)gluErrorString(error);//需要glut库函数
-        const char* errStr = reinterpret_cast<const char*>(glewGetErrorString(error)); // glew库函数
-        printf("glGetError = %d(0x%x), str = %s\n", error, error, errStr);
-        switch (error)
-        {
-        case GL_INVALID_ENUM:
-            printf("GL_INVALID_ENUM, %s: %d\n", file, line);
-            break;
-        case GL_INVALID_VALUE:
-            printf("GL_INVALID_VALUE, %s: %d\n", file, line);
-            break;
-        case GL_INVALID_OPERATION:
-            printf("GL_INVALID_OPERATION, %s: %d\n", file, line);
-            break;
-        case GL_STACK_OVERFLOW:
-            printf("GL_STACK_OVERFLOW, %s: %d\n", file, line);
-            break;
-        case GL_STACK_UNDERFLOW:
-            printf("GL_STACK_UNDERFLOW, %s: %d\n", file, line);
-            break;
-        case GL_OUT_OF_MEMORY:
-            printf("GL_OUT_OF_MEMORY, %s: %d\n", file, line);
-            break;
-        default:
-            printf("Unknown Error, %s: %d\n", file, line);
-            break;
-        }
+    if (objModel != nullptr)
+    {
+        delete objModel;
+        objModel = nullptr;
     }
 }
 
@@ -91,7 +64,7 @@ int GLRenderer::GLInit()
 
     // init opengl var
     gpuProgram = new GPUProgram();
-
+    objModel   = new ObjModel();
     return 0;
 }
 
@@ -187,41 +160,10 @@ int GLRenderer::InitModel(ShaderParameters* sp)
     gpuProgram->Link();
     GLuint program = gpuProgram->GetGPUProgram();
 
-    // 1.load model
-    // load vertexes, vertex count, indexes, index count;
-    unsigned int* indexData = nullptr;
-    int vertexCount = 0, indexCount = 0;
-    VertexData* vertexData = misc::LoadObjModel(S_PATH("resource/model/sphere.obj"), &indexData, vertexCount, indexCount);
-    if (nullptr == vertexData) {
-        printf("load obj model failed\n");
-        return -1;
-    }
+    // 1.model
+    objModel->InitModel(S_PATH("resource/model/Cube.obj"));
 
-    sp->modelMsg.vertexData = vertexData;
-    sp->modelMsg.indexData = indexData;
-    sp->modelMsg.vertexCount = vertexCount;
-    sp->modelMsg.indexCount = indexCount;
-
-    // 2.设置VBO IBO
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(VertexData) * vertexCount, vertexData, GL_STATIC_DRAW); // 传入显卡
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    // 用glBufferData把索引复制到缓冲里
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indexCount, indexData, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    glBindVertexArray(0);
-    GL_CHECK_ERROR;
-
-    // 3.传递参数到shader
+    // 2.传递参数到shader
     gpuProgram->DetectAttributes({"pos", "texcoord", "normal" });
     sp->posLoc = gpuProgram->GetQualfiterLoc("pos");
     sp->texcoordLoc = gpuProgram->GetQualfiterLoc("texcoord");
@@ -235,16 +177,16 @@ int GLRenderer::InitModel(ShaderParameters* sp)
     sp->textureLoc = gpuProgram->GetQualfiterLoc("U_MainTexture");
     GL_CHECK_ERROR;
 
-    // 4.根据图片创建纹理
-    sp->imgTex = CreateTextureFromFile(S_PATH("resource/image/earth.bmp"));
+    // 3.根据图片创建纹理
+    sp->imgTex = CreateTextureFromFile(S_PATH("resource/image/niutou.bmp"));
 
-    // 5.初始化 mvp
+    // 4.初始化 mvp
     sp->modelMsg.mvp = new MVPMatrix();
     sp->modelMsg.mvp->model = glm::translate(0.0f, 0.0f, -4.0f);
     sp->modelMsg.mvp->projection = glm::perspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
     sp->modelMsg.mvp->normalMatrix = glm::inverseTranspose(sp->modelMsg.mvp->model);
 
-    // 6.opengl 环境设置
+    // 5.opengl 环境设置
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
 
@@ -275,20 +217,8 @@ int GLRenderer::UpdateModel(ShaderParameters& sp, float& angle)
     glBindTexture(GL_TEXTURE_2D, sp.imgTex);
     glUniform1i(sp.textureLoc, 0);
 
-    glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
-    glEnableVertexAttribArray(sp.posLoc);
-    glVertexAttribPointer(sp.posLoc, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void*>(0)); // 每个点间隔VertexData大小,从0开始
-    glEnableVertexAttribArray(sp.texcoordLoc);
-    glVertexAttribPointer(sp.texcoordLoc, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void*>(sizeof(float) * 3));
-    glEnableVertexAttribArray(sp.normalLoc);
-    glVertexAttribPointer(sp.normalLoc, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void*>(sizeof(float) * 5));
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    GL_CHECK_ERROR;
-
-    // IBO
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
-    glDrawElements(GL_TRIANGLES, sp.modelMsg.indexCount, GL_UNSIGNED_INT, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    objModel->Bind(sp.posLoc, sp.texcoordLoc, sp.normalLoc);
+    objModel->Draw();
 
     GL_CHECK_ERROR;
 

@@ -3,8 +3,6 @@
 
 class FixRenderer
 {
-private:
-    /* data */
 public:
     FixRenderer(/* args */);
     ~FixRenderer();

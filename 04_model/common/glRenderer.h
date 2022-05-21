@@ -7,6 +7,7 @@
 
 class ShaderParameters;
 class GPUProgram;
+class ObjModel;
 
 class GLRenderer
 {
@@ -27,9 +28,10 @@ public:
 
 private:
     GPUProgram* gpuProgram;
-    GLuint mProgram;
-    char infoLog[512];
-    GLuint VBO, VAO, EBO;
+    ObjModel*   objModel;
+    GLuint      mProgram;
+    char        infoLog[512];
+    GLuint      VBO, VAO, EBO;
     // GLuint program;
 
     char* vsCode;
@@ -41,9 +43,6 @@ private:
         0,0,0,1
     };
 };
-
-#define GL_CALL(x)      do{x; GLRenderer::CheckGLError(__FILE__, __LINE__);}while(0);
-#define GL_CHECK_ERROR  GLRenderer::CheckGLError(__FILE__, __LINE__);
 
 struct MVPMatrix;
 class ShaderParameters
