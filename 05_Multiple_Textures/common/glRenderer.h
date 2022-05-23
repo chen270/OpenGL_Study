@@ -27,6 +27,7 @@ public:
     static void CheckGLError(const char *file, int line);
     GLuint CreateTextureFromFile(const char *imagePath);
 
+    int ModelTest(HWND hwnd, HDC dc);
 private:
     GPUProgram* gpuProgram;
     ObjModel*   objModel;

@@ -53,8 +53,8 @@ void ObjModel::Bind(GLuint posLoc, GLuint texcoordLoc, GLuint normalLoc)
     glEnableVertexAttribArray(texcoordLoc);
     glVertexAttribPointer(texcoordLoc, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void*>(sizeof(float) * 3));
 
-    glEnableVertexAttribArray(normalLoc);
-    glVertexAttribPointer(normalLoc, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void*>(sizeof(float) * 5));
+    //glEnableVertexAttribArray(normalLoc);
+    //glVertexAttribPointer(normalLoc, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), reinterpret_cast<void*>(sizeof(float) * 5));
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     GL_CHECK_ERROR;

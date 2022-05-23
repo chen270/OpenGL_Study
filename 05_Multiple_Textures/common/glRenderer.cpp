@@ -157,6 +157,22 @@ void GLRenderer::SetTriangle_ShaderQualifiers(const GLuint& program)
     GL_CHECK_ERROR;
 }
 
+float* CreatePerspective(float fov, float aspect, float zNear, float zFar)
+{
+	float* matrix = new float[16];
+	float half = fov / 2.0f;
+	float randiansOfHalf = (half / 180.0f) * 3.14f;
+	float yscale = cosf(randiansOfHalf) / sinf(randiansOfHalf);
+	float xscale = yscale / aspect;
+	memset(matrix, 0, sizeof(float) * 16);
+	matrix[0] = xscale;
+	matrix[5] = yscale;
+	matrix[10] = (zNear + zFar) / (zNear - zFar);
+	matrix[11] = -1.0f;
+	matrix[14] = (2.0f * zNear * zFar) / (zNear - zFar);
+	return matrix;
+}
+
 int GLRenderer::InitModel()
 {
     // 0.get Program
@@ -173,24 +189,27 @@ int GLRenderer::InitModel()
 
     // 2.传递参数到shader
     gpuProgram->DetectAttributes({"pos", "texcoord", "normal" });
-    gpuProgram->DetectUniforms({ "M", "V", "P", "NM", "U_MainTexture", "U_Wood"});
+    gpuProgram->DetectUniforms({ "M", "V", "P", "U_MainTexture", "U_Wood"});
     GL_CHECK_ERROR;
 
     // 3.根据图片创建纹理
-    mMainTex = CreateTextureFromFile(S_PATH("resource/image/niutou.bmp"));
-    mMulTex1 = CreateTextureFromFile(S_PATH("resource/image/earth.bmp"));
+    mMainTex = CreateTextureFromFile(S_PATH("resource/image/test.bmp"));
+    mMulTex1 = CreateTextureFromFile(S_PATH("resource/image/wood.bmp"));
 
     // 4.初始化 mvp
-    mModelMvp->model = glm::translate(0.0f, 0.0f, -4.0f);
-    mModelMvp->projection = glm::perspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
-    mModelMvp->normalMatrix = glm::inverseTranspose(mModelMvp->model);
+    //mModelMvp->model = glm::translate(0.0f, 0.0f, -4.0f);
+    //mModelMvp->projection = glm::perspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    //mModelMvp->normalMatrix = glm::inverseTranspose(mModelMvp->model);
+    //mModelMvp->model = glm::translate<float>(0.0f, 0.0f, -2.0f) * glm::rotate<float>(-30.0f, 0.0f, 1.0f, 1.0f);
+    //float* projection = CreatePerspective(50.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+
 
     // 5.opengl 环境设置
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //glEnable(GL_BLEND);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     return 0;
 }
@@ -200,8 +219,10 @@ int GLRenderer::UpdateModel(float& angle)
     angle += 1.0f;
     if (angle > 360.0f)
         angle = 0;
-    glm::mat4 model = glm::translate(0.0f, 0.0f, -4.0f) * glm::rotate(angle, 0.0f, 1.0f, 0.0f);
-    glm::mat4 normalMatrix = glm::inverseTranspose(model);
+    //glm::mat4 model = glm::translate(0.0f, 0.0f, -2.0f) * glm::rotate(angle, 0.0f, 1.0f, 0.0f);
+    glm::mat4 model = glm::translate<float>(0.0f, 0.0f, -2.0f) * glm::rotate<float>(-30.0f, 0.0f, 1.0f, 1.0f);
+    float* projection = CreatePerspective(50.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    //glm::mat4 normalMatrix = glm::inverseTranspose(model);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -209,8 +230,8 @@ int GLRenderer::UpdateModel(float& angle)
     glUseProgram(gpuProgram->GetGPUProgram());
     glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(model));      // M model,模型视图移动，
     glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("V"), 1, GL_FALSE, identity);                      // V visual 视口
-    glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(mModelMvp->projection)); // 投影
-    // glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("P"), 1, GL_FALSE, projection); // 投影
+    //glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
 	GL_CHECK_ERROR;
 
 	glActiveTexture(GL_TEXTURE0);
@@ -231,6 +252,81 @@ int GLRenderer::UpdateModel(float& angle)
     return 0;
 }
 
+int GLRenderer::ModelTest(HWND hwnd, HDC dc)
+{
+	GLuint mainTexture = CreateTextureFromFile(S_PATH("resource/image/test.bmp"));
+	GLuint woodTexture = CreateTextureFromFile(S_PATH("resource/image/wood.bmp"));
+	//init gpu program
+	GPUProgram gpuProgram;
+	gpuProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/sample.vs"));
+	gpuProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/sample.fs"));
+	gpuProgram.Link();
+    
+	gpuProgram.DetectAttributes({ "pos", "texcoord", "normal" });
+    gpuProgram.DetectUniforms({ "M", "V", "P", "U_MainTexture", "U_Wood" });
+	//init 3d model
+	ObjModel model;
+	model.InitModel(S_PATH("resource/model/Cube.obj"));
+
+	float identity[] = {
+		1.0f,0,0,0,
+		0,1.0f,0,0,
+		0,0,1.0f,0,
+		0,0,0,1.0f
+	};
+	float M[] = {
+		1.0f,0,0,0,
+		0,1.0f,0,0,
+		0,0,1.0f,0,
+		0,0,-3.0f,1.0f
+	};
+	glm::mat4 modelMatrix = glm::translate<float>(0.0f, 0.0f, -2.0f) * glm::rotate<float>(-30.0f, 0.0f, 1.0f, 1.0f);
+	float* projection = CreatePerspective(50.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+
+	glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+	ShowWindow(hwnd, SW_SHOW);
+	UpdateWindow(hwnd);
+
+	MSG msg;
+	while (true)
+	{
+		if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+		{
+			if (msg.message == WM_QUIT)
+			{
+				break;
+			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glEnable(GL_DEPTH_TEST);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glUseProgram(gpuProgram.GetGPUProgram());
+
+        glUniformMatrix4fv(gpuProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
+		glUniformMatrix4fv(gpuProgram.GetQualfiterLoc("V"), 1, GL_FALSE, identity);
+		glUniformMatrix4fv(gpuProgram.GetQualfiterLoc("P"), 1, GL_FALSE, projection);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, mainTexture);
+		glUniform1i(gpuProgram.GetQualfiterLoc("U_MainTexture"), 0);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, woodTexture);
+		glUniform1i(gpuProgram.GetQualfiterLoc("U_Wood"), 1);
+
+		model.Bind(gpuProgram.GetQualfiterLoc("pos"), gpuProgram.GetQualfiterLoc("texcoord"), gpuProgram.GetQualfiterLoc("normal"));
+		model.Draw();
+
+		glUseProgram(0);
+		glFinish();
+		SwapBuffers(dc);
+	}
+	return 0;
+}
+
 void GLRenderer::GetRendererObject(GLuint& vao, GLuint& vbo, GLuint& ebo)
 {
     vao = this->VAO;
@@ -241,7 +337,12 @@ void GLRenderer::GetRendererObject(GLuint& vao, GLuint& vbo, GLuint& ebo)
 GLuint GLRenderer::CreateTextureFromFile(const char* imagePath)
 {
     unsigned char* imageData = nullptr;
-    misc::LoadFileContent(imagePath, (char**)&imageData);
+    int ret = misc::LoadFileContent(imagePath, (char**)&imageData);
+	if (ret < 0)
+	{
+		printf("LoadFileContent(%s) error\n", imagePath);
+		return 0;
+	}
 
     // decode bmp
     int width = 0, height = 0;

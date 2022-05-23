@@ -78,7 +78,7 @@ int GPUProgram::Link()
     //  检查 shader 语法问题
     int ret = 0;
     glGetProgramiv(mProgram, GL_LINK_STATUS, &ret);
-    if (!ret)
+    if (ret == GL_FALSE)
     {
         std::cout << "Create GPU program, Link Error" << std::endl;
         GLint logLen;
@@ -91,6 +91,16 @@ int GPUProgram::Link()
         glDeleteProgram(mProgram);
         mProgram = 0;
         return -1;
+    }
+    else
+    {
+        std::cout << "Create GPU program Success, Link Msg:" << std::endl;
+		GLint logLen;
+		glGetProgramiv(mProgram, GL_INFO_LOG_LENGTH, &logLen);
+		char* infoLog = new char[logLen]();
+		glGetProgramInfoLog(mProgram, logLen, NULL, infoLog);
+		std::cout << infoLog << std::endl;
+		delete[] infoLog;
     }
 
     while (!mAttachShader.empty())
@@ -124,7 +134,7 @@ void GPUProgram::DetectAttributes(std::initializer_list<const char *> attributeN
     {
         loc = glGetAttribLocation(mProgram, str);
         if (loc < 0)
-            continue;
+            printf("Warning: Attribute Var(%s) not found in Shader, Please Check Shader or maybe optimized\n", str);
         mQualfitersLoc.insert(std::pair<std::string, GLint>(str, loc));
     }
 }
@@ -139,7 +149,7 @@ void GPUProgram::DetectUniforms(std::initializer_list<const char *> uniformNames
     {
         loc = glGetUniformLocation(mProgram, str);
         if (loc < 0)
-            continue;
+		    printf("Warning: Uniform Var(%s) not found in Shader, Please Check Shader or maybe optimized\n", str);
         mQualfitersLoc.insert(std::pair<std::string, GLint>(str, loc));
     }
 }

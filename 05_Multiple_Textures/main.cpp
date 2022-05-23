@@ -16,6 +16,7 @@ int main()
     HDC dc = utils.bindWindowWithOpenGL();
     glRender.GLInit();
 
+#if 1
     glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
 
     // FixRenderer::Rendererinit();
@@ -50,5 +51,8 @@ int main()
         // ----OpenGL end  -----
     }
 
+#else
+    glRender.ModelTest(hwnd, dc);
+#endif
     return 0;
 }
