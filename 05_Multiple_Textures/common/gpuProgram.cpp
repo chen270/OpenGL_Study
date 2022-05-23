@@ -77,6 +77,7 @@ int GPUProgram::Link()
     // check glLinkProgram
     //  检查 shader 语法问题
     int ret = 0;
+    std::cout << "-----shader msg start-------" << std::endl;
     glGetProgramiv(mProgram, GL_LINK_STATUS, &ret);
     if (ret == GL_FALSE)
     {
@@ -102,6 +103,8 @@ int GPUProgram::Link()
 		std::cout << infoLog << std::endl;
 		delete[] infoLog;
     }
+	std::cout << "-----shader msg end-------" << std::endl << std::endl;
+
 
     while (!mAttachShader.empty())
     {
