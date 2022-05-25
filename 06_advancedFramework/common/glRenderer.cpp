@@ -299,22 +299,116 @@ int GLRenderer::InitFullScreenQuad()
     mFullScreenQuad->Init();
 }
 
-int GLRenderer::UpdateFullScreenQuad()
+int GLRenderer::FullScreenQuadFun(HWND hwnd, HDC dc)
 {
+    // init
+	// 0.get Program
+    GPUProgram gpuProgModel;
+    gpuProgModel.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/sample.vs"));
+    gpuProgModel.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/sample.fs"));
+    gpuProgModel.Link();
+	GLuint progModel = gpuProgModel.GetGPUProgram();
+	GL_CHECK_ERROR;
+
+	// 1.model
+	objModel->InitModel(S_PATH("resource/model/Cube.obj"));
+
+	// 2.传递参数到shader
+    gpuProgModel.DetectAttributes({ "pos", "texcoord", "normal" });
+    gpuProgModel.DetectUniforms({ "M", "V", "P", "U_MainTexture", "U_Wood" });
+	GL_CHECK_ERROR;
+
+	// 3.根据图片创建纹理
+	mMainTex = CreateTextureFromFile(S_PATH("resource/image/test.bmp"));
+	mMulTex1 = CreateTextureFromFile(S_PATH("resource/image/wood.bmp"));
+
+
+	// 4.FBO
+	GPUProgram gpuProgQuad;
+    gpuProgQuad.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
+    gpuProgQuad.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/fullscreenQuad.fs"));
+    gpuProgQuad.Link();
+	GLuint progQuad = gpuProgQuad.GetGPUProgram();
+    gpuProgQuad.DetectAttributes({ "pos"});
+    gpuProgQuad.DetectUniforms({"U_MainTexture"});
+
+	mFBO->AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGBA, 800, 600);
+	mFBO->AttachDepthBuffer("depth", 800, 600);
+	mFBO->Finish();
+
+    mFullScreenQuad->Init();
+
+	// 5.opengl 环境设置
+	glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	ShowWindow(hwnd, SW_SHOW);
+	UpdateWindow(hwnd);
+
+	glm::mat4 model = glm::translate<float>(0.0f, 0.0f, -2.0f) * glm::rotate<float>(-30.0f, 0.0f, 1.0f, 1.0f);
+	float* projection = CreatePerspective(50.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+	//glm::mat4 normalMatrix = glm::inverseTranspose(model);
+
+	MSG msg;
+	// 防止程序退出
+	while (true)
+{
+		// Windows Message
+		if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+		{
+			if (msg.message == WM_QUIT)
+{
+				break;
+			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+
+		// ----OpenGL start-----
 	mFBO->Bind();
 	glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // FBO 纹理设置成白色
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	// 编译命令
-	glUseProgram(gpuProgram->GetGPUProgram());
+		glUseProgram(gpuProgModel.GetGPUProgram());
+		glUniformMatrix4fv(gpuProgModel.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(model));      // M model,模型视图移动，
+		glUniformMatrix4fv(gpuProgModel.GetQualfiterLoc("V"), 1, GL_FALSE, identity);                      // V visual 视口
+		glUniformMatrix4fv(gpuProgModel.GetQualfiterLoc("P"), 1, GL_FALSE, projection); // 投影
+		//glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+		GL_CHECK_ERROR;
+
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, mFBO->GetBuffer("color"));
-	glUniform1i(gpuProgram->GetQualfiterLoc("U_MainTexture"), 0);
+        glBindTexture(GL_TEXTURE_2D, mMainTex);
+		glUniform1i(gpuProgModel.GetQualfiterLoc("U_MainTexture"), 0);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, mMulTex1);
+		glUniform1i(gpuProgModel.GetQualfiterLoc("U_Wood"), 1);
+
+		objModel->Bind(gpuProgModel.GetQualfiterLoc("pos"), gpuProgModel.GetQualfiterLoc("texcoord"), gpuProgModel.GetQualfiterLoc("normal"));
+		objModel->Draw();
+		GL_CHECK_ERROR;
+
 	glUseProgram(0); // 重置 
     mFBO->UnBind();
+		glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glUseProgram(gpuProgQuad.GetGPUProgram());
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, mFBO->GetBuffer("color"));
+		glUniform1i(gpuProgQuad.GetQualfiterLoc("U_MainTexture"), 0);
+        mFullScreenQuad->Draw(gpuProgQuad.GetQualfiterLoc("pos"));
+        GL_CHECK_ERROR;
 
+		glUseProgram(0); // 重置 
+        glFinish();
+		SwapBuffers(dc);
+		// ----OpenGL end  -----
+	}
 
-	glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    return 0;
 }
 
 void GLRenderer::GetRendererObject(GLuint& vao, GLuint& vbo, GLuint& ebo)

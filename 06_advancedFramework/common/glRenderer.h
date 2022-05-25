@@ -27,7 +27,7 @@ public:
     int    UpdateModel(float &angle);
 
     int    InitFullScreenQuad();
-    int    UpdateFullScreenQuad();
+    int    FullScreenQuadFun(HWND hwnd, HDC dc);
 
     GLuint CreateTextureFromFile(const char *imagePath);
 
