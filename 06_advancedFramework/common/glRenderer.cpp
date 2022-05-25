@@ -10,7 +10,7 @@
 struct Vertex
 {
     float pos[3];
-    float color[4] = { 1.0f,1.0f,1.0f,1.0f };  // 默认白色
+    float color[4] = {1.0f, 1.0f, 1.0f, 1.0f}; // 默认白色
 };
 
 struct MVPMatrix
@@ -20,11 +20,9 @@ struct MVPMatrix
     glm::mat4 normalMatrix;
 };
 
-
-GLRenderer::GLRenderer(/* args */) :
-    VAO(0), VBO(0), EBO(0),
-    vsCode(nullptr), fsCode(nullptr),
-    gpuProgram(nullptr)
+GLRenderer::GLRenderer(/* args */) : VAO(0), VBO(0), EBO(0),
+                                     vsCode(nullptr), fsCode(nullptr),
+                                     gpuProgram(nullptr)
 {
 }
 
@@ -52,11 +50,11 @@ GLRenderer::~GLRenderer()
         mModelMvp = nullptr;
     }
 
-	if (mFBO != nullptr)
-	{
-		delete mFBO;
+    if (mFBO != nullptr)
+    {
+        delete mFBO;
         mFBO = nullptr;
-	}
+    }
 
     if (mFullScreenQuad != nullptr)
     {
@@ -82,13 +80,12 @@ int GLRenderer::GLInit()
 
     // init opengl var
     gpuProgram = new GPUProgram();
-    objModel   = new ObjModel();
-    mModelMvp   = new MVPMatrix();
+    objModel = new ObjModel();
+    mModelMvp = new MVPMatrix();
     mFBO = new FBO();
     mFullScreenQuad = new FullScreenQuad();
     return 0;
 }
-
 
 int GLRenderer::InitTriangle()
 {
@@ -105,7 +102,7 @@ int GLRenderer::InitTriangle()
     vertex[2].pos[1] = 10.0f;
     vertex[2].pos[2] = -100.0f;
 
-    unsigned int indexes[] = { 0,1,2 }; // 连接顺序0-1-2
+    unsigned int indexes[] = {0, 1, 2}; // 连接顺序0-1-2
 
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -131,15 +128,14 @@ int GLRenderer::InitTriangle()
     return 0;
 }
 
-void GLRenderer::SetTriangle_ShaderQualifiers(const GLuint& program)
+void GLRenderer::SetTriangle_ShaderQualifiers(const GLuint &program)
 {
     // 单位矩阵
     float identity[] = {
-        1,0,0,0,
-        0,1,0,0,
-        0,0,1,0,
-        0,0,0,1
-    };
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1};
 
     // 计算投影矩阵
     glm::mat4 projection = glm::perspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
@@ -160,9 +156,9 @@ void GLRenderer::SetTriangle_ShaderQualifiers(const GLuint& program)
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glEnableVertexAttribArray(posLocation);
-    glVertexAttribPointer(posLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(0)); // 每个点间隔Vertex大小,从0开始
+    glVertexAttribPointer(posLocation, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void *>(0)); // 每个点间隔Vertex大小,从0开始
     glEnableVertexAttribArray(colorLocation);
-    glVertexAttribPointer(colorLocation, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(sizeof(float) * 3)); // 每个点间隔Vertex大小,起点是sizeof(float)*3即pos后面
+    glVertexAttribPointer(colorLocation, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void *>(sizeof(float) * 3)); // 每个点间隔Vertex大小,起点是sizeof(float)*3即pos后面
 
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -171,20 +167,20 @@ void GLRenderer::SetTriangle_ShaderQualifiers(const GLuint& program)
     GL_CHECK_ERROR;
 }
 
-float* CreatePerspective(float fov, float aspect, float zNear, float zFar)
+float *CreatePerspective(float fov, float aspect, float zNear, float zFar)
 {
-	float* matrix = new float[16];
-	float half = fov / 2.0f;
-	float randiansOfHalf = (half / 180.0f) * 3.14f;
-	float yscale = cosf(randiansOfHalf) / sinf(randiansOfHalf);
-	float xscale = yscale / aspect;
-	memset(matrix, 0, sizeof(float) * 16);
-	matrix[0] = xscale;
-	matrix[5] = yscale;
-	matrix[10] = (zNear + zFar) / (zNear - zFar);
-	matrix[11] = -1.0f;
-	matrix[14] = (2.0f * zNear * zFar) / (zNear - zFar);
-	return matrix;
+    float *matrix = new float[16];
+    float half = fov / 2.0f;
+    float randiansOfHalf = (half / 180.0f) * 3.14f;
+    float yscale = cosf(randiansOfHalf) / sinf(randiansOfHalf);
+    float xscale = yscale / aspect;
+    memset(matrix, 0, sizeof(float) * 16);
+    matrix[0] = xscale;
+    matrix[5] = yscale;
+    matrix[10] = (zNear + zFar) / (zNear - zFar);
+    matrix[11] = -1.0f;
+    matrix[14] = (2.0f * zNear * zFar) / (zNear - zFar);
+    return matrix;
 }
 
 int GLRenderer::InitModel()
@@ -196,14 +192,14 @@ int GLRenderer::InitModel()
     gpuProgram->AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/sample.fs"));
     gpuProgram->Link();
     GLuint program = gpuProgram->GetGPUProgram();
-	GL_CHECK_ERROR;
+    GL_CHECK_ERROR;
 
     // 1.model
     objModel->InitModel(S_PATH("resource/model/Cube.obj"));
 
     // 2.传递参数到shader
-    gpuProgram->DetectAttributes({"pos", "texcoord", "normal" });
-    gpuProgram->DetectUniforms({ "M", "V", "P", "U_MainTexture", "U_Wood"});
+    gpuProgram->DetectAttributes({"pos", "texcoord", "normal"});
+    gpuProgram->DetectUniforms({"M", "V", "P", "U_MainTexture", "U_Wood"});
     GL_CHECK_ERROR;
 
     // 3.根据图片创建纹理
@@ -211,21 +207,20 @@ int GLRenderer::InitModel()
     mMulTex1 = CreateTextureFromFile(S_PATH("resource/image/wood.bmp"));
 
     // 4.初始化 mvp
-    //mModelMvp->model = glm::translate(0.0f, 0.0f, -4.0f);
-    //mModelMvp->projection = glm::perspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
-    //mModelMvp->normalMatrix = glm::inverseTranspose(mModelMvp->model);
-    //mModelMvp->model = glm::translate<float>(0.0f, 0.0f, -2.0f) * glm::rotate<float>(-30.0f, 0.0f, 1.0f, 1.0f);
-    //float* projection = CreatePerspective(50.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    // mModelMvp->model = glm::translate(0.0f, 0.0f, -4.0f);
+    // mModelMvp->projection = glm::perspective(45.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    // mModelMvp->normalMatrix = glm::inverseTranspose(mModelMvp->model);
+    // mModelMvp->model = glm::translate<float>(0.0f, 0.0f, -2.0f) * glm::rotate<float>(-30.0f, 0.0f, 1.0f, 1.0f);
+    // float* projection = CreatePerspective(50.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
 
     // FBO
     mFBO->AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGBA, 256, 256);
     mFBO->AttachDepthBuffer("depth", 256, 256);
     mFBO->Finish();
 
-
     // 5.opengl 环境设置
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    //glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    // glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
 
     glEnable(GL_BLEND);
@@ -234,67 +229,65 @@ int GLRenderer::InitModel()
     return 0;
 }
 
-int GLRenderer::UpdateModel(float& angle)
+int GLRenderer::UpdateModel(float &angle)
 {
     angle += 1.0f;
     if (angle > 360.0f)
         angle = 0;
-    //glm::mat4 model = glm::translate(0.0f, 0.0f, -2.0f) * glm::rotate(angle, 0.0f, 1.0f, 0.0f);
+    // glm::mat4 model = glm::translate(0.0f, 0.0f, -2.0f) * glm::rotate(angle, 0.0f, 1.0f, 0.0f);
     glm::mat4 model = glm::translate<float>(0.0f, 0.0f, -2.0f) * glm::rotate<float>(-30.0f, 0.0f, 1.0f, 1.0f);
-    float* projection = CreatePerspective(50.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
-    //glm::mat4 normalMatrix = glm::inverseTranspose(model);
+    float *projection = CreatePerspective(50.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    // glm::mat4 normalMatrix = glm::inverseTranspose(model);
 
     mFBO->Bind();
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // FBO 纹理设置成白色
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // FBO 纹理设置成白色
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     mFBO->UnBind();
 
-	glClearColor(41.0f/255.0f, 71.0f/255.0f, 121.0f/255.0f, 1.0f);
+    glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 
     // 编译命令
     glUseProgram(gpuProgram->GetGPUProgram());
-    glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(model));      // M model,模型视图移动，
-    glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("V"), 1, GL_FALSE, identity);                      // V visual 视口
-    glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("P"), 1, GL_FALSE, projection); // 投影
-    //glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
-	GL_CHECK_ERROR;
+    glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(model)); // M model,模型视图移动，
+    glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("V"), 1, GL_FALSE, identity);              // V visual 视口
+    glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("P"), 1, GL_FALSE, projection);            // 投影
+                                                                                              // glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    GL_CHECK_ERROR;
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, mFBO->GetBuffer("color"));
-	glUniform1i(gpuProgram->GetQualfiterLoc("U_MainTexture"), 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, mFBO->GetBuffer("color"));
+    glUniform1i(gpuProgram->GetQualfiterLoc("U_MainTexture"), 0);
 
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, mMulTex1);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, mMulTex1);
     glUniform1i(gpuProgram->GetQualfiterLoc("U_Wood"), 1);
-	GL_CHECK_ERROR;
-
+    GL_CHECK_ERROR;
 
     objModel->Bind(gpuProgram->GetQualfiterLoc("pos"), gpuProgram->GetQualfiterLoc("texcoord"), gpuProgram->GetQualfiterLoc("normal"));
     objModel->Draw();
 
     glUseProgram(0); // 重置
 
-	GL_CHECK_ERROR;
+    GL_CHECK_ERROR;
     return 0;
 }
 
 int GLRenderer::InitFullScreenQuad()
 {
-	// 0.get Program
-	if (nullptr == gpuProgram)
-		return 0;
-	gpuProgram->AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
-	gpuProgram->AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/fullscreenQuad.fs"));
-	gpuProgram->Link();
-	GLuint program = gpuProgram->GetGPUProgram();
-	GL_CHECK_ERROR;
+    // 0.get Program
+    if (nullptr == gpuProgram)
+        return 0;
+    gpuProgram->AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
+    gpuProgram->AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/fullscreenQuad.fs"));
+    gpuProgram->Link();
+    GLuint program = gpuProgram->GetGPUProgram();
+    GL_CHECK_ERROR;
 
-	// 2.传递参数到shader
-	gpuProgram->DetectAttributes({ "pos"});
-	gpuProgram->DetectUniforms({"U_MainTexture"});
-	GL_CHECK_ERROR;
+    // 2.传递参数到shader
+    gpuProgram->DetectAttributes({"pos"});
+    gpuProgram->DetectUniforms({"U_MainTexture"});
+    GL_CHECK_ERROR;
 
     mFullScreenQuad->Init();
 }
@@ -302,139 +295,138 @@ int GLRenderer::InitFullScreenQuad()
 int GLRenderer::FullScreenQuadFun(HWND hwnd, HDC dc)
 {
     // init
-	// 0.get Program
+    // 0.get Program
     GPUProgram gpuProgModel;
     gpuProgModel.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/sample.vs"));
     gpuProgModel.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/sample.fs"));
     gpuProgModel.Link();
-	GLuint progModel = gpuProgModel.GetGPUProgram();
-	GL_CHECK_ERROR;
+    GLuint progModel = gpuProgModel.GetGPUProgram();
+    GL_CHECK_ERROR;
 
-	// 1.model
-	objModel->InitModel(S_PATH("resource/model/Cube.obj"));
+    // 1.model
+    objModel->InitModel(S_PATH("resource/model/Cube.obj"));
 
-	// 2.传递参数到shader
-    gpuProgModel.DetectAttributes({ "pos", "texcoord", "normal" });
-    gpuProgModel.DetectUniforms({ "M", "V", "P", "U_MainTexture", "U_Wood" });
-	GL_CHECK_ERROR;
+    // 2.传递参数到shader
+    gpuProgModel.DetectAttributes({"pos", "texcoord", "normal"});
+    gpuProgModel.DetectUniforms({"M", "V", "P", "U_MainTexture", "U_Wood"});
+    GL_CHECK_ERROR;
 
-	// 3.根据图片创建纹理
-	mMainTex = CreateTextureFromFile(S_PATH("resource/image/test.bmp"));
-	mMulTex1 = CreateTextureFromFile(S_PATH("resource/image/wood.bmp"));
+    // 3.根据图片创建纹理
+    mMainTex = CreateTextureFromFile(S_PATH("resource/image/test.bmp"));
+    mMulTex1 = CreateTextureFromFile(S_PATH("resource/image/wood.bmp"));
 
-
-	// 4.FBO
-	GPUProgram gpuProgQuad;
+    // 4.FBO
+    GPUProgram gpuProgQuad;
     gpuProgQuad.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
     gpuProgQuad.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/fullscreenQuad.fs"));
     gpuProgQuad.Link();
-	GLuint progQuad = gpuProgQuad.GetGPUProgram();
-    gpuProgQuad.DetectAttributes({ "pos"});
+    GLuint progQuad = gpuProgQuad.GetGPUProgram();
+    gpuProgQuad.DetectAttributes({"pos"});
     gpuProgQuad.DetectUniforms({"U_MainTexture"});
 
-	mFBO->AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGBA, 800, 600);
-	mFBO->AttachDepthBuffer("depth", 800, 600);
-	mFBO->Finish();
+    mFBO->AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGBA, 800, 600);
+    mFBO->AttachDepthBuffer("depth", 800, 600);
+    mFBO->Finish();
 
     mFullScreenQuad->Init();
 
-	// 5.opengl 环境设置
-	glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    // 5.opengl 环境设置
+    glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	ShowWindow(hwnd, SW_SHOW);
-	UpdateWindow(hwnd);
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
 
-	glm::mat4 model = glm::translate<float>(0.0f, 0.0f, -2.0f) * glm::rotate<float>(-30.0f, 0.0f, 1.0f, 1.0f);
-	float* projection = CreatePerspective(50.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
-	//glm::mat4 normalMatrix = glm::inverseTranspose(model);
+    glm::mat4 model = glm::translate<float>(0.0f, 0.0f, -2.0f) * glm::rotate<float>(-30.0f, 0.0f, 1.0f, 1.0f);
+    float *projection = CreatePerspective(50.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    // glm::mat4 normalMatrix = glm::inverseTranspose(model);
 
-	MSG msg;
-	// 防止程序退出
-	while (true)
-{
-		// Windows Message
-		if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
-		{
-			if (msg.message == WM_QUIT)
-{
-				break;
-			}
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
+    MSG msg;
+    // 防止程序退出
+    while (true)
+    {
+        // Windows Message
+        if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
 
-		// ----OpenGL start-----
-	mFBO->Bind();
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // FBO 纹理设置成白色
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // ----OpenGL start-----
+        mFBO->Bind();
+        glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// 编译命令
-		glUseProgram(gpuProgModel.GetGPUProgram());
-		glUniformMatrix4fv(gpuProgModel.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(model));      // M model,模型视图移动，
-		glUniformMatrix4fv(gpuProgModel.GetQualfiterLoc("V"), 1, GL_FALSE, identity);                      // V visual 视口
-		glUniformMatrix4fv(gpuProgModel.GetQualfiterLoc("P"), 1, GL_FALSE, projection); // 投影
-		//glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
-		GL_CHECK_ERROR;
+        // 编译命令
+        glUseProgram(gpuProgModel.GetGPUProgram());
+        glUniformMatrix4fv(gpuProgModel.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(model)); // M model,模型视图移动，
+        glUniformMatrix4fv(gpuProgModel.GetQualfiterLoc("V"), 1, GL_FALSE, identity);              // V visual 视口
+        glUniformMatrix4fv(gpuProgModel.GetQualfiterLoc("P"), 1, GL_FALSE, projection);            // 投影
+        // glUniformMatrix4fv(gpuProgram->GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+        GL_CHECK_ERROR;
 
-	glActiveTexture(GL_TEXTURE0);
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, mMainTex);
-		glUniform1i(gpuProgModel.GetQualfiterLoc("U_MainTexture"), 0);
+        glUniform1i(gpuProgModel.GetQualfiterLoc("U_MainTexture"), 0);
 
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, mMulTex1);
-		glUniform1i(gpuProgModel.GetQualfiterLoc("U_Wood"), 1);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, mMulTex1);
+        glUniform1i(gpuProgModel.GetQualfiterLoc("U_Wood"), 1);
 
-		objModel->Bind(gpuProgModel.GetQualfiterLoc("pos"), gpuProgModel.GetQualfiterLoc("texcoord"), gpuProgModel.GetQualfiterLoc("normal"));
-		objModel->Draw();
-		GL_CHECK_ERROR;
+        objModel->Bind(gpuProgModel.GetQualfiterLoc("pos"), gpuProgModel.GetQualfiterLoc("texcoord"), gpuProgModel.GetQualfiterLoc("normal"));
+        objModel->Draw();
+        GL_CHECK_ERROR;
 
-	glUseProgram(0); // 重置 
-    mFBO->UnBind();
-		glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+        glUseProgram(0); // 重置
+        mFBO->UnBind();
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // FBO 纹理设置成白色
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(gpuProgQuad.GetGPUProgram());
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, mFBO->GetBuffer("color"));
-		glUniform1i(gpuProgQuad.GetQualfiterLoc("U_MainTexture"), 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, mFBO->GetBuffer("color"));
+        glUniform1i(gpuProgQuad.GetQualfiterLoc("U_MainTexture"), 0);
         mFullScreenQuad->Draw(gpuProgQuad.GetQualfiterLoc("pos"));
         GL_CHECK_ERROR;
 
-		glUseProgram(0); // 重置 
+        glUseProgram(0); // 重置
         glFinish();
-		SwapBuffers(dc);
-		// ----OpenGL end  -----
-	}
+        SwapBuffers(dc);
+        // ----OpenGL end  -----
+    }
 
     return 0;
 }
 
-void GLRenderer::GetRendererObject(GLuint& vao, GLuint& vbo, GLuint& ebo)
+void GLRenderer::GetRendererObject(GLuint &vao, GLuint &vbo, GLuint &ebo)
 {
     vao = this->VAO;
     vbo = this->VBO;
     ebo = this->EBO;
 }
 
-GLuint GLRenderer::CreateTextureFromFile(const char* imagePath)
+GLuint GLRenderer::CreateTextureFromFile(const char *imagePath)
 {
-    unsigned char* imageData = nullptr;
-    int ret = misc::LoadFileContent(imagePath, (char**)&imageData);
-	if (ret < 0)
-	{
-		printf("LoadFileContent(%s) error\n", imagePath);
-		return 0;
-	}
+    unsigned char *imageData = nullptr;
+    int ret = misc::LoadFileContent(imagePath, (char **)&imageData);
+    if (ret < 0)
+    {
+        printf("LoadFileContent(%s) error\n", imagePath);
+        return 0;
+    }
 
     // decode bmp
     int width = 0, height = 0;
-    unsigned char* pixelData = nullptr;
+    unsigned char *pixelData = nullptr;
     int pixelDataSize = 0;
     GLenum srcFormat = GL_RGB;
 
-    if (*((unsigned short*)imageData) == 0x4D42) // 判断前两个字节是否是 4D42，是的话就是bmp文件
+    if (*((unsigned short *)imageData) == 0x4D42) // 判断前两个字节是否是 4D42，是的话就是bmp文件
     {
         pixelData = misc::DecodeBMPData(imageData, width, height);
     }
