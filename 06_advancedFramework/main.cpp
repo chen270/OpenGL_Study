@@ -16,11 +16,12 @@ int main()
     HDC dc = utils.bindWindowWithOpenGL();
     glRender.GLInit();
 
-#if 1
+#if 0
     glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
 
     // FixRenderer::Rendererinit();
     glRender.InitModel();
+    glRender.InitFullScreenQuad();
     // glRender.SetTriangle_ShaderQualifiers();
     // ----OpenGL end   ----------
 
@@ -52,7 +53,7 @@ int main()
     }
 
 #else
-    glRender.ModelTest(hwnd, dc);
+    glRender.FullScreenQuadFun(hwnd, dc);
 #endif
     return 0;
 }
