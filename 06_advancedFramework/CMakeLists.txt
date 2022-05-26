@@ -77,3 +77,15 @@ ADD_EXECUTABLE(${TARGET} ${ALL_SOURCES}) #只有在 add_executable() 中的文�
 TARGET_LINK_LIBRARIES(${TARGET} "${PROJECT_SOURCE_DIR}/third_party/glew32.lib")
 TARGET_LINK_LIBRARIES(${TARGET} "opengl32.lib")
 # TARGET_LINK_LIBRARIES(${TARGET} "${PROJECT_SOURCE_DIR}/protoc/libprotobufd.lib")
+
+
+# add vscode launch.json for debug
+IF (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  # using Clang
+ELSEIF (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # using GCC
+  configure_file("${PROJECT_SOURCE_DIR}/launch_gdb.json" "${PROJECT_SOURCE_DIR}/.vscode/launch.json" COPYONLY)
+ELSEIF (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  # using Visual Studio C++
+  configure_file("${PROJECT_SOURCE_DIR}/launch_msvc.json" "${PROJECT_SOURCE_DIR}/.vscode/launch.json" COPYONLY)
+ENDIF()
