@@ -34,6 +34,10 @@ public:
     int    LightSpecularVertexEnv(HWND hwnd, HDC dc);
     int    LightSpecularPixelEnv(HWND hwnd, HDC dc);
 
+    int    CartoonVertEnv(HWND hwnd, HDC dc);
+    int    CartoonPixelEnv(HWND hwnd, HDC dc);
+    
+
     GLuint CreateTextureFromFile(const char *imagePath);
 
 private:
