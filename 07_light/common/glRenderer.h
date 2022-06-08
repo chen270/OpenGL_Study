@@ -31,6 +31,8 @@ public:
     int    LightAmbientEnv(HWND hwnd, HDC dc);
     int    LightDiffuseVertexEnv(HWND hwnd, HDC dc);
     int    LightDiffusePixelEnv(HWND hwnd, HDC dc);
+    int    LightSpecularVertexEnv(HWND hwnd, HDC dc);
+    int    LightSpecularPixelEnv(HWND hwnd, HDC dc);
 
     GLuint CreateTextureFromFile(const char *imagePath);
 
