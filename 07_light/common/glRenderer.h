@@ -33,6 +33,7 @@ public:
     int    LightDiffusePixelEnv(HWND hwnd, HDC dc);
     int    LightSpecularVertexEnv(HWND hwnd, HDC dc);
     int    LightSpecularPixelEnv(HWND hwnd, HDC dc);
+    int    BlinnPhongPixelEnv(HWND hwnd, HDC dc);
 
     int    CartoonVertEnv(HWND hwnd, HDC dc);
     int    CartoonPixelEnv(HWND hwnd, HDC dc);
