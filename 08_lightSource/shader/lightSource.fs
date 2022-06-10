@@ -20,15 +20,27 @@ void main()
     vec4 ambientColor = U_AmbientLightColor * U_AmbientMaterial; // 环境光
 
     vec3 L = vec3(0.0);
+
+    // light attribute
+    float attenuation = 1.0;
+    float constFactor = 1.0;
+    float linearFactor = 0.01;
+    float expFactor = 0.01;
+
     if (U_LightPos.w == 0.0)
     {
-        // direction light
+        // direction light, 平行光
         L = U_LightPos.xyz; // L vector
     }
     else
     {
         // model point -> light pos
         // point light / spot light
+        L = U_LightPos.xyz - V_WorldPos.xyz;
+
+        // 点光源衰减因子
+        float dis = length(L);
+        attenuation = 1.0 / (constFactor + linearFactor*dis + expFactor*dis*dis);
     }
 
     // diffuse
@@ -37,13 +49,21 @@ void main()
     float diffuseIntensity = max(0.0, dot(L,n));
     vec4 diffuseColor = U_DiffuseLightColor * U_DiffuseMaterial * diffuseIntensity;
 
-    // specular, -L 表示光源指向物体，即入射光线
-    vec3 reflectDir = reflect(-L, n);
-    reflectDir = normalize(reflectDir);
-    // vec4 worldPos = M * vec4(pos, 1); // 世界坐标系
-    vec3 viewDir = U_EyePos - V_WorldPos.xyz;
-    viewDir = normalize(viewDir);
-    vec4 specularColor = U_SpecularLightColor * U_SpecularMaterial * pow(max(0.0, dot(viewDir, reflectDir)), 128.0);
 
-    gl_FragColor = ambientColor + diffuseColor + specularColor;
+    // specular, 采用 blinn-phone模型
+    float specularIntensity = 0.0;
+    if(diffuseIntensity == 0.0)
+    {
+        specularIntensity == 0.0;
+    }
+    else
+    {
+        vec3 eye = U_EyePos - V_WorldPos.xyz;
+        vec3 viewDir = eye + L;
+        viewDir = normalize(viewDir);
+        specularIntensity = pow(max(0.0, dot(viewDir, n)), 256.0);
+    }
+    vec4 specularColor = U_SpecularLightColor * U_SpecularMaterial * specularIntensity;
+
+    gl_FragColor = ambientColor + diffuseColor*attenuation + specularColor*attenuation;
 }

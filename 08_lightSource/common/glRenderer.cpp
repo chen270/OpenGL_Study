@@ -570,8 +570,8 @@ int GLRenderer::LightSpecularPixelEnv(HWND hwnd, HDC dc)
     // init
     // 0.get Program
     GPUProgram gpuProgSpecular;
-    gpuProgSpecular.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/specular_pixel.vs"));
-    gpuProgSpecular.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/specular_pixel.fs"));
+    gpuProgSpecular.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/lightSource.vs"));
+    gpuProgSpecular.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/lightSource.fs"));
     gpuProgSpecular.Link();
     GL_CHECK_ERROR;
 
@@ -605,8 +605,8 @@ int GLRenderer::LightSpecularPixelEnv(HWND hwnd, HDC dc)
     float diffuseLightColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float diffuseMaterial[] = {0.4f, 0.4f, 0.4f, 1.0f};
     float specularLightColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
-    float specularMaterial[] = {1.0f, 1.0f, 1.0f, 1.0f};
-    float lightPos[] = {1.0f, 1.0f, 0.0f, 0.0};
+    float specularMaterial[] = {0.8f, 0.8f, 0.8f, 1.0f};
+    float lightPos[] = {4.0f, 4.0f, 0.0f, 1.0f};
     float eyePos[] = {0.0f, 0.0f, 0.0f};
     MSG msg;
     // 防止程序退出
