@@ -565,13 +565,13 @@ int GLRenderer::LightDiffusePixelEnv(HWND hwnd, HDC dc)
     return 0;
 }
 
-int GLRenderer::LightSpecularPixelEnv(HWND hwnd, HDC dc)
+int GLRenderer::LightSpecularPixelEnv(HWND hwnd, HDC dc, int viewW, int viewH)
 {
     // init
     // 0.get Program
     GPUProgram gpuProgSpecular;
-    gpuProgSpecular.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/lightSource.vs"));
-    gpuProgSpecular.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/lightSource.fs"));
+    gpuProgSpecular.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/light.vs"));
+    gpuProgSpecular.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/light.fs"));
     gpuProgSpecular.Link();
     GL_CHECK_ERROR;
 
@@ -598,7 +598,8 @@ int GLRenderer::LightSpecularPixelEnv(HWND hwnd, HDC dc)
 
     glm::mat4 model = glm::translate<float>(0.0f, -1.0f, -5.0f) * glm::rotate<float>(-90.0f, 1.0f, 0.0f, 0.0f) *
                       glm::scale(3.0f, 3.0f, 3.0f);
-    glm::mat4 projection = glm::perspective(50.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    const float WH = static_cast<float>(viewW) / static_cast<float>(viewH);
+    glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
     glm::mat4 normalMatrix = glm::inverseTranspose(model);
 
     float ambientLightColor[] = {0.4f, 0.4f, 0.4f, 1.0f};
@@ -607,7 +608,7 @@ int GLRenderer::LightSpecularPixelEnv(HWND hwnd, HDC dc)
     float diffuseMaterial[] = {0.4f, 0.4f, 0.4f, 1.0f};
     float specularLightColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float specularMaterial[] = {0.8f, 0.8f, 0.8f, 1.0f};
-    float lightPos[] = {0.0f, 2.0f, -5.0f, 2.0f};
+    float lightPos[] = {0.0f, 2.0f, -6.0f, 1.0f};
     float eyePos[] = {0.0f, 0.0f, 0.0f};
     float spotLightDirection[] = {0.0f, -1.0f, 0.0f, 128.0f};
     float spotLightCutOffAngle = 15.0; // degree
@@ -669,6 +670,151 @@ int GLRenderer::LightSpecularPixelEnv(HWND hwnd, HDC dc)
 
     return 0;
 }
+
+int GLRenderer::AllLightSource(HWND hwnd, HDC dc, int viewW, int viewH)
+{
+    // init
+    // 0.get Program
+    GPUProgram gpuProgSpecular;
+    gpuProgSpecular.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/light.vs"));
+    gpuProgSpecular.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/light.fs"));
+    gpuProgSpecular.Link();
+    GL_CHECK_ERROR;
+
+    // model
+    objModel->InitModel(S_PATH("resource/model/Cube.obj"));
+
+    // 传递参数到shader
+    gpuProgSpecular.DetectAttributes({"pos", "texcoord", "normal"});
+    gpuProgSpecular.DetectUniforms({"M", "V", "P", "NM", "U_LightPos",
+                                    "U_DiffuseLightColor", "U_DiffuseMaterial",
+                                    "U_AmbientLightColor", "U_AmbientMaterial",
+                                    "U_SpecularLightColor", "U_SpecularMaterial",
+                                    "U_EyePos", "U_SpotLightDirect", "U_CutOffAngle"});
+    GL_CHECK_ERROR;
+
+    // opengl 环境设置
+    glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+
+    glm::mat4 modelA = glm::translate<float>(-2.0f, 0.0f, -6.0f) * glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 modelB = glm::translate<float>( 0.0f, 0.0f, -6.0f) * glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 modelC = glm::translate<float>( 2.0f, 0.0f, -6.0f) * glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    const float WH = static_cast<float>(viewW) / static_cast<float>(viewH);
+    glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
+    glm::mat4 normalMatrix = glm::inverseTranspose(modelA);
+    glm::mat4 normalMatrixB = glm::inverseTranspose(modelB);
+    glm::mat4 normalMatrixC = glm::inverseTranspose(modelC);
+
+    float ambientLightColor[] = {0.4f, 0.4f, 0.4f, 1.0f};
+    float ambientMaterial[] = {0.4f, 0.4f, 0.4f, 1.0f};
+    float diffuseLightColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float diffuseMaterial[] = {0.4f, 0.4f, 0.4f, 1.0f};
+    float specularLightColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float specularMaterial[] = {0.8f, 0.8f, 0.8f, 1.0f};
+    float lightPos[] = {0.0f, 1.5f, 0.0f, 0.0f};
+    float eyePos[] = {0.0f, 0.0f, 0.0f};
+    float spotLightDirection[] = {0.0f, -1.0f, 0.0f, 128.0f};
+    float spotLightCutOffAngle = 0.0; // degree
+    MSG msg;
+    // 防止程序退出
+    while (true)
+    {
+        // Windows Message
+        if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        // ----OpenGL start-----
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // 编译命令
+        glUseProgram(gpuProgSpecular.GetGPUProgram());
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("V"), 1, GL_FALSE, identity);              // V visual 视口
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));  // 投影
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));  // 投影
+
+        // ambient
+        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_AmbientLightColor"), 1, ambientLightColor);
+        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_AmbientMaterial"), 1, ambientMaterial);
+
+        // diffuse
+        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_DiffuseLightColor"), 1, diffuseLightColor);
+        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_DiffuseMaterial"), 1, diffuseMaterial);
+        GL_CHECK_ERROR;
+
+        // specular
+        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_SpecularLightColor"), 1, specularLightColor);
+        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_SpecularMaterial"), 1, specularMaterial);
+        glUniform3fv(gpuProgSpecular.GetQualfiterLoc("U_EyePos"), 1, eyePos);
+        GL_CHECK_ERROR;
+
+        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_SpotLightDirect"), 1, spotLightDirection);
+        GL_CHECK_ERROR;
+
+        // modelA, 方向光
+        lightPos[0] = 0.0f;
+        lightPos[1] = 1.5f;
+        lightPos[2] = 0.0f;
+        lightPos[3] = 0.0f;
+        spotLightCutOffAngle = 0.0f;
+        glUniform1f(gpuProgSpecular.GetQualfiterLoc("U_CutOffAngle"), spotLightCutOffAngle);
+        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_LightPos"), 1, lightPos);
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(modelA)); // M model,模型视图移动，
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));  // 投影
+        objModel->Bind(gpuProgSpecular.GetQualfiterLoc("pos"), gpuProgSpecular.GetQualfiterLoc("normal"));
+        objModel->Draw();
+        GL_CHECK_ERROR;
+
+        // modelB, 点光源
+        lightPos[0] = 0.0f;
+        lightPos[1] = 3.0f;
+        lightPos[2] = -6.0f;
+        lightPos[3] = 1.0f;
+        spotLightCutOffAngle = 0.0f;
+        glUniform1f(gpuProgSpecular.GetQualfiterLoc("U_CutOffAngle"), spotLightCutOffAngle);
+        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_LightPos"), 1, lightPos);
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(modelB)); // M model,模型视图移动，
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrixB));  // 投影
+        objModel->Bind(gpuProgSpecular.GetQualfiterLoc("pos"), gpuProgSpecular.GetQualfiterLoc("normal"));
+        objModel->Draw();
+        GL_CHECK_ERROR;
+
+        // modelC, 聚光灯
+        lightPos[0] = 2.0f;
+        lightPos[1] = 3.0f;
+        lightPos[2] = -6.0f;
+        lightPos[3] = 1.0f;
+        spotLightCutOffAngle = 15.0f;
+        glUniform1f(gpuProgSpecular.GetQualfiterLoc("U_CutOffAngle"), spotLightCutOffAngle);
+        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_LightPos"), 1, lightPos);
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(modelC)); // M model,模型视图移动，
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrixC));  // 投影
+        objModel->Bind(gpuProgSpecular.GetQualfiterLoc("pos"), gpuProgSpecular.GetQualfiterLoc("normal"));
+        objModel->Draw();
+        GL_CHECK_ERROR;
+
+        glUseProgram(0); // 重置
+        glFinish();
+        SwapBuffers(dc);
+        // ----OpenGL end  -----
+    }
+
+    return 0;
+}
+
 
 void GLRenderer::GetRendererObject(GLuint &vao, GLuint &vbo, GLuint &ebo)
 {

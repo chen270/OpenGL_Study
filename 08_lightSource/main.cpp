@@ -12,7 +12,11 @@ int main()
     Win32Utils utils;
     GLRenderer glRender;
 
-    HWND hwnd = utils.CreateWin32Window(800, 600);
+    uint64_t width = 800;
+    uint64_t height = 600;
+
+
+    HWND hwnd = utils.CreateWin32Window(width, height);
     HDC dc = utils.bindWindowWithOpenGL();
     glRender.GLInit();
 
@@ -54,7 +58,8 @@ int main()
 
 #else
     // glRender.LightDiffusePixelEnv(hwnd, dc);
-    glRender.LightSpecularPixelEnv(hwnd, dc);
+    // glRender.LightSpecularPixelEnv(hwnd, dc, width, height);
+    glRender.AllLightSource(hwnd, dc, width, height);
     // glRender.LightDiffuseVertexEnv(hwnd, dc);
 #endif
     return 0;
