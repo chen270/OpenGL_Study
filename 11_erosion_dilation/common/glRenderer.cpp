@@ -997,7 +997,7 @@ int GLRenderer::Erosion_Dilation(HWND hwnd, HDC dc, int viewW, int viewH)
 
     GPUProgram erosionProgram;
     erosionProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
-    erosionProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/fullscreenQuad.fs"));
+    erosionProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/erosion.fs"));
     erosionProgram.Link();
     GL_CHECK_ERROR;
     erosionProgram.DetectAttributes({"pos", "texcoord"});
@@ -1006,7 +1006,7 @@ int GLRenderer::Erosion_Dilation(HWND hwnd, HDC dc, int viewW, int viewH)
 
     GPUProgram dilationProgram;
     dilationProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
-    dilationProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/fullscreenQuad.fs"));
+    dilationProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/dilation.fs"));
     dilationProgram.Link();
     GL_CHECK_ERROR;
     dilationProgram.DetectAttributes({"pos", "texcoord"});
