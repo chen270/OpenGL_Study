@@ -1138,6 +1138,167 @@ int GLRenderer::Erosion_Dilation_Guassian(HWND hwnd, HDC dc, int viewW, int view
     return 0;
 }
 
+int GLRenderer::Erosion_Dilation_MultiGuassian(HWND hwnd, HDC dc, int viewW, int viewH)
+{
+    // init
+    // 0.get Program
+    GPUProgram gpuProgSpecular;
+    gpuProgSpecular.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/xRay.vs"));
+    gpuProgSpecular.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/xRay.fs"));
+    gpuProgSpecular.Link();
+    GL_CHECK_ERROR;
+
+    GPUProgram originProgram;
+    originProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
+    originProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/fullscreenQuad.fs"));
+    originProgram.Link();
+    GL_CHECK_ERROR;
+    originProgram.DetectAttributes({"pos", "texcoord"});
+    originProgram.DetectUniforms({"U_MainTexture"});
+    GL_CHECK_ERROR;
+
+    GPUProgram erosionProgram;
+    erosionProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
+    erosionProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/erosion.fs"));
+    erosionProgram.Link();
+    GL_CHECK_ERROR;
+    erosionProgram.DetectAttributes({"pos", "texcoord"});
+    erosionProgram.DetectUniforms({"U_MainTexture"});
+    GL_CHECK_ERROR;
+
+    GPUProgram dilationProgram;
+    dilationProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
+    dilationProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/dilation.fs"));
+    dilationProgram.Link();
+    GL_CHECK_ERROR;
+    dilationProgram.DetectAttributes({"pos", "texcoord"});
+    dilationProgram.DetectUniforms({"U_MainTexture"});
+    GL_CHECK_ERROR;
+
+    GPUProgram gaussianProgram;
+    gaussianProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
+    gaussianProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/gaussian.fs"));
+    gaussianProgram.Link();
+    GL_CHECK_ERROR;
+    gaussianProgram.DetectAttributes({"pos", "texcoord"});
+    gaussianProgram.DetectUniforms({"U_MainTexture"});
+    GLuint blurTex = CreateTextureFromFile(S_PATH("resource/image/wood.bmp"));
+    GL_CHECK_ERROR;
+
+    FullScreenQuad fsq;
+    fsq.Init();
+
+    FBO fbo;
+    fbo.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGBA, viewW, viewH);
+    fbo.AttachDepthBuffer("depth", viewW, viewH);
+    fbo.Finish();
+
+    // model
+    objModel->InitModel(S_PATH("resource/model/niutou.obj"));
+
+    // 传递参数到shader
+    gpuProgSpecular.DetectAttributes({"pos", "texcoord", "normal"});
+    gpuProgSpecular.DetectUniforms({"M", "V", "P", "NM", "U_LightPos",
+                                    "U_EyePos"});
+    GL_CHECK_ERROR;
+
+    glm::mat4 modelA = glm::translate<float>(-2.0f, 0.0f, -6.0f) * glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    const float WH = static_cast<float>(viewW) / static_cast<float>(viewH);
+    glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
+    glm::mat4 normalMatrix = glm::inverseTranspose(modelA);
+
+    glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(-0.5, 1.5f, -3.0f),
+                                        glm::vec3(-2.0f, 0.0f, -6.0f),
+                                        glm::vec3(0.0f, 1.0f, 0.0f));
+
+    float lightPos[] = {0.0f, 1.5f, 0.0f, 0.0f};
+    float eyePos[] = {-0.5, 1.5f, -3.0f};
+
+    // opengl 环境设置
+    glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+
+    // 开启 alpha 混合
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+    MSG msg;
+    glClearColor(0.1f, 0.4f, 0.7f, 1.0f);
+    // 防止程序退出
+    while (true)
+    {
+        // Windows Message
+        if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        // ----OpenGL start-----
+        // 编译命令
+        glUseProgram(gpuProgSpecular.GetGPUProgram());
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));    // V visual 视口
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));  // 投影
+
+        glUniform3fv(gpuProgSpecular.GetQualfiterLoc("U_EyePos"), 1, eyePos);
+        GL_CHECK_ERROR;
+
+        // modelA, 方向光
+        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_LightPos"), 1, lightPos);
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(modelA)); // M model,模型视图移动，
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));  // 投影
+        GL_CHECK_ERROR;
+
+        fbo.Bind();
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        objModel->Bind(gpuProgSpecular.GetQualfiterLoc("pos"), gpuProgSpecular.GetQualfiterLoc("normal"));
+        objModel->Draw();
+        GL_CHECK_ERROR;
+        glFlush();
+        fbo.UnBind();
+
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glUseProgram(originProgram.GetGPUProgram());
+        glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        glBindTexture(GL_TEXTURE_2D, fbo.GetBuffer("color"));
+        fsq.DrawToQuarter(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("texcoord"), 0);
+
+
+        glUseProgram(erosionProgram.GetGPUProgram());
+        glUniform1i(erosionProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        glBindTexture(GL_TEXTURE_2D, fbo.GetBuffer("color"));
+        fsq.DrawToQuarter(erosionProgram.GetQualfiterLoc("pos"), erosionProgram.GetQualfiterLoc("texcoord"), 1);
+
+
+        glUseProgram(dilationProgram.GetGPUProgram());
+        glUniform1i(dilationProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        glBindTexture(GL_TEXTURE_2D, fbo.GetBuffer("color"));
+        fsq.DrawToQuarter(dilationProgram.GetQualfiterLoc("pos"), dilationProgram.GetQualfiterLoc("texcoord"), 2);
+
+        glUseProgram(gaussianProgram.GetGPUProgram());
+        glUniform1i(gaussianProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        glBindTexture(GL_TEXTURE_2D, blurTex);
+        fsq.DrawToQuarter(gaussianProgram.GetQualfiterLoc("pos"), dilationProgram.GetQualfiterLoc("texcoord"), 3);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glUseProgram(0); // 重置
+        glFinish();
+        SwapBuffers(dc);
+        // ----OpenGL end  -----
+    }
+
+    glDisable(GL_BLEND);
+    return 0;
+}
 
 void GLRenderer::GetRendererObject(GLuint &vao, GLuint &vbo, GLuint &ebo)
 {
