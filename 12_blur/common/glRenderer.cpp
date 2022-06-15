@@ -1020,6 +1020,7 @@ int GLRenderer::Erosion_Dilation_Guassian(HWND hwnd, HDC dc, int viewW, int view
     GL_CHECK_ERROR;
     gaussianProgram.DetectAttributes({"pos", "texcoord"});
     gaussianProgram.DetectUniforms({"U_MainTexture"});
+    GLuint blurTex = CreateTextureFromFile(S_PATH("resource/image/wood.bmp"));
     GL_CHECK_ERROR;
 
     FullScreenQuad fsq;
@@ -1123,7 +1124,7 @@ int GLRenderer::Erosion_Dilation_Guassian(HWND hwnd, HDC dc, int viewW, int view
 
         glUseProgram(gaussianProgram.GetGPUProgram());
         glUniform1i(gaussianProgram.GetQualfiterLoc("U_MainTexture"), 0);
-        glBindTexture(GL_TEXTURE_2D, fbo.GetBuffer("color"));
+        glBindTexture(GL_TEXTURE_2D, blurTex);
         fsq.DrawToQuarter(gaussianProgram.GetQualfiterLoc("pos"), dilationProgram.GetQualfiterLoc("texcoord"), 3);
 
         glBindTexture(GL_TEXTURE_2D, 0);

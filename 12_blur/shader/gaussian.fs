@@ -23,7 +23,7 @@ void main()
     vec4 color = vec4(0.0);
     int coreSize = 3;
     int halfCoreSize = coreSize / 2;
-    float texelOffset = 1.0 / 200.0;
+    float texelOffset = 1.0 / 50.0;
     float knerel[9];
     knerel[6] = 1; knerel[7] = 2; knerel[8] = 1;
     knerel[3] = 2; knerel[4] = 4; knerel[5] = 2;
@@ -38,5 +38,5 @@ void main()
         }
     }
     color /= 16.0;
-    gl_FragColor=color;
+    gl_FragColor= color;
 }
