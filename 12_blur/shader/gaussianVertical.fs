@@ -5,21 +5,6 @@ uniform sampler2D U_MainTexture;//纹理填充
 
 void main()
 {
-    // float minValue = 1.0;
-    // int coreSize = 40;
-    // int halfCoreSize = coreSize / 2;
-    // float texelOffset = 1.0 / 100.0;
-    // for(int y = 0; y < coreSize; ++y)
-    // {
-    //     for(int x = 0; x < coreSize; ++x)
-    //     {
-    //         float currentAlpha = texture2D(U_MainTexture,V_Texcoord + vec2((-halfCoreSize+x)*texelOffset,(-halfCoreSize+y)*texelOffset)).a;
-    //         minValue = min(currentAlpha, minValue);
-    //     }
-    // }
-
-    // gl_FragColor=vec4(texture2D(U_MainTexture,V_Texcoord).rgb, minValue);
-
     vec4 color = vec4(0.0);
     int coreSize = 3;
     int halfCoreSize = coreSize / 2;

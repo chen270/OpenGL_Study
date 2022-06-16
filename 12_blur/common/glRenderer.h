@@ -37,6 +37,7 @@ public:
     int    UseXRay(HWND hwnd, HDC dc, int viewW, int viewH);
     int    Erosion_Dilation_Guassian(HWND hwnd, HDC dc, int viewW, int viewH);
     int    Erosion_Dilation_MultiGuassian(HWND hwnd, HDC dc, int viewW, int viewH);
+    int    MultiGuassianSimplified(HWND hwnd, HDC dc, int viewW, int viewH);
 
     int    CartoonVertEnv(HWND hwnd, HDC dc);
     int    CartoonPixelEnv(HWND hwnd, HDC dc);
