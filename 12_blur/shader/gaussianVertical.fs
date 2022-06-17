@@ -5,23 +5,16 @@ uniform sampler2D U_MainTexture;//纹理填充
 
 void main()
 {
-    vec4 color = vec4(0.0);
-    int coreSize = 3;
-    int halfCoreSize = coreSize / 2;
-    float texelOffset = 1.0 / 250.0;
-    float knerel[9];
-    knerel[6] = 1; knerel[7] = 2; knerel[8] = 1;
-    knerel[3] = 2; knerel[4] = 4; knerel[5] = 2;
-    knerel[0] = 1; knerel[1] = 2; knerel[2] = 1;
-    int index = 0;
-    for(int y = 0; y < coreSize; ++y)
+    float weight[5] = float[](0.22, 0.19, 0.121, 0.08, 0.01);
+    vec2  texSize = 1.0 / textureSize(U_MainTexture, 0);
+    // float texelOffset = texSize.y;
+    float texelOffset = 1.0 / 400.0;
+    vec4 color = texture2D(U_MainTexture, V_Texcoord) * weight[0];
+    for(int i = 1; i < 5; ++i)
     {
-        for(int x = 0; x < coreSize; ++x)
-        {
-            vec4 currentColor = texture2D(U_MainTexture,V_Texcoord + vec2((-1+x)*texelOffset,(-1+y)*texelOffset));
-            color += currentColor*knerel[index++];
-        }
+        color += texture2D(U_MainTexture, vec2(V_Texcoord.x,  texelOffset*i + V_Texcoord.y)) * weight[i];
+        color += texture2D(U_MainTexture, vec2(V_Texcoord.x, -texelOffset*i + V_Texcoord.y)) * weight[i];
     }
-    color /= 16.0;
+
     gl_FragColor= color;
 }
