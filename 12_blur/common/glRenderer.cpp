@@ -1535,19 +1535,32 @@ int GLRenderer::MultiGuassianSimplified(HWND hwnd, HDC dc, int viewW, int viewH)
         GL_CHECK_ERROR;
         fboGaussian1.UnBind();
         
+        // blur fbo
+        fboGaussian2.Bind();
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glUseProgram(verticalGaussProgram.GetGPUProgram());
+        glBindTexture(GL_TEXTURE_2D, fboDirectionLight.GetBuffer("color"));
+        glUniform1i(verticalGaussProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        fsq.DrawToQuarter(verticalGaussProgram.GetQualfiterLoc("pos"), verticalGaussProgram.GetQualfiterLoc("texcoord"), 5);
+        GL_CHECK_ERROR;
+        fboGaussian2.UnBind();
+        
+
 
         glUseProgram(gaussianProgram.GetGPUProgram());
         glBindTexture(GL_TEXTURE_2D, fboGaussian1.GetBuffer("color"));
         fsq.DrawToQuarter(gaussianProgram.GetQualfiterLoc("pos"), gaussianProgram.GetQualfiterLoc("texcoord"), 1);
 
         glUseProgram(horizontalGaussProgram.GetGPUProgram());
-        glBindTexture(GL_TEXTURE_2D, fboGaussian1.GetBuffer("color"));
+        glBindTexture(GL_TEXTURE_2D, fboGaussian2.GetBuffer("color"));
         fsq.DrawToQuarter(horizontalGaussProgram.GetQualfiterLoc("pos"), horizontalGaussProgram.GetQualfiterLoc("texcoord"), 2);
 
-        glUseProgram(verticalGaussProgram.GetGPUProgram());
-        glBindTexture(GL_TEXTURE_2D, fboGaussian1.GetBuffer("color"));
-        fsq.DrawToQuarter(verticalGaussProgram.GetQualfiterLoc("pos"), verticalGaussProgram.GetQualfiterLoc("texcoord"), 3);
-        GL_CHECK_ERROR;
+        // glUseProgram(verticalGaussProgram.GetGPUProgram());
+        // glBindTexture(GL_TEXTURE_2D, fboGaussian1.GetBuffer("color"));
+        // fsq.DrawToQuarter(verticalGaussProgram.GetQualfiterLoc("pos"), verticalGaussProgram.GetQualfiterLoc("texcoord"), 3);
+        // GL_CHECK_ERROR;
+
+
 
         glBindTexture(GL_TEXTURE_2D, 0);
         glUseProgram(0); // 重置
