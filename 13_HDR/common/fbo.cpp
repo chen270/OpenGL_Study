@@ -56,7 +56,7 @@ int FBO::AttachColorBuffer(const char *bufferName, GLenum attachment, GLenum dat
 	// 解绑帧缓冲，保证我们不会不小心渲染到错误的帧缓冲上
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    mDrawBuffers.push(attachment);
+    mDrawBuffers.emplace_back(attachment);
     mBuffers.insert(std::pair<std::string, GLuint>(bufferName, colorBuffer));
     return ret;
 }
@@ -105,11 +105,9 @@ int FBO::Finish()
         return -1;
 
     GLenum *buffers = new GLenum[nCount]();
-    int index = 0;
-    while (!mDrawBuffers.empty())
+    for (int i = 0; i < nCount; ++i)
     {
-        buffers[index++] = mDrawBuffers.top();
-        mDrawBuffers.pop();
+        buffers[i] = mDrawBuffers[i];
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, mFBO);

@@ -98,5 +98,15 @@ void main()
     }
     vec4 specularColor = U_SpecularLightColor * U_SpecularMaterial * specularIntensity;
 
-    gl_FragColor = (ambientColor + diffuseColor*attenuation + specularColor*attenuation)*2.0;
+    vec4 color = (ambientColor + diffuseColor*attenuation + specularColor*attenuation)*2.0;
+    // gl_FragColor = (ambientColor + diffuseColor*attenuation + specularColor*attenuation)*2.0;
+
+    if (color.r > 1.0 && color.g > 1.0 && color.b > 1.0 && color.a > 1.0)
+    {
+        gl_FragData[1] = color; // HDR
+    }
+    else
+    {
+        gl_FragData[0] = color;
+    }
 }

@@ -1841,30 +1841,12 @@ int GLRenderer::HDRRendering(HWND hwnd, HDC dc, int viewW, int viewH)
     hdrProgram.DetectUniforms({"U_MainTexture"});
     GL_CHECK_ERROR;
 
-    GPUProgram verticalGaussProgram;
-    verticalGaussProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
-    verticalGaussProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/gaussianVertical.fs"));
-    verticalGaussProgram.Link();
-    verticalGaussProgram.DetectAttributes({"pos", "texcoord"});
-    verticalGaussProgram.DetectUniforms({"U_MainTexture"});
-    GL_CHECK_ERROR;
-
-    GPUProgram horizontalGaussProgram;
-    horizontalGaussProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
-    horizontalGaussProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/gaussianHorizontal.fs"));
-    horizontalGaussProgram.Link();
-    horizontalGaussProgram.DetectAttributes({"pos", "texcoord"});
-    horizontalGaussProgram.DetectUniforms({"U_MainTexture"});
-    GL_CHECK_ERROR;
-
-    GPUProgram gaussianProgram;
-    gaussianProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
-    gaussianProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/gaussian.fs"));
-    gaussianProgram.Link();
-    GL_CHECK_ERROR;
-    gaussianProgram.DetectAttributes({"pos", "texcoord"});
-    gaussianProgram.DetectUniforms({"U_MainTexture"});
-    GLuint blurTex = CreateTextureFromFile(S_PATH("resource/image/wood.bmp"));
+    GPUProgram combineProgram;
+    combineProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
+    combineProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/combineHDRAndNormal.fs"));
+    combineProgram.Link();
+    combineProgram.DetectAttributes({"pos", "texcoord"});
+    combineProgram.DetectUniforms({"U_MainTexture","U_HDRTexture"});
     GL_CHECK_ERROR;
 
     FullScreenQuad fsq;
@@ -1892,7 +1874,7 @@ int GLRenderer::HDRRendering(HWND hwnd, HDC dc, int viewW, int viewH)
     fboGaussian3.Finish();
 
     FBO fboHDR;
-    fboHDR.AttachColorBuffer("color233", GL_COLOR_ATTACHMENT0, GL_RGBA16F, viewW, viewH);
+    fboHDR.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGBA, viewW, viewH);
     fboHDR.AttachColorBuffer("hdrBuffer", GL_COLOR_ATTACHMENT1, GL_RGBA16F, viewW, viewH);
     fboHDR.AttachDepthBuffer("depth", viewW, viewH);
     fboHDR.Finish();
@@ -2002,44 +1984,40 @@ int GLRenderer::HDRRendering(HWND hwnd, HDC dc, int viewW, int viewH)
         // no blur
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         glUseProgram(originProgram.GetGPUProgram());
+        glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("color"));
         glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
-        glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("color233"));
         fsq.DrawToQuarter(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("texcoord"), 0);
         glBindTexture(GL_TEXTURE_2D, 0);
-        glUseProgram(0); // 重置
-        
-        // glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // glUseProgram(originProgram.GetGPUProgram());
-        // glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
-        // glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("hdrBuffer"));
-        // fsq.DrawToQuarter(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("texcoord"), 1);
-        // glBindTexture(GL_TEXTURE_2D, 0);
-        // glUseProgram(0); // 重置
-
 
         glUseProgram(hdrProgram.GetGPUProgram());
-        // glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("color233"));
+        glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("color"));
         glUniform1i(hdrProgram.GetQualfiterLoc("U_MainTexture"), 0);
         fsq.DrawToQuarter(hdrProgram.GetQualfiterLoc("pos"), hdrProgram.GetQualfiterLoc("texcoord"), 1);
 
-        // glActiveTexture(GL_TEXTURE1);
         glUseProgram(hdrProgram.GetGPUProgram());
         glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("hdrBuffer"));
         glUniform1i(hdrProgram.GetQualfiterLoc("U_MainTexture"), 0);
         fsq.DrawToQuarter(hdrProgram.GetQualfiterLoc("pos"), hdrProgram.GetQualfiterLoc("texcoord"), 2);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
-        // glUseProgram(horizontalGaussProgram.GetGPUProgram());
-        // glBindTexture(GL_TEXTURE_2D, fboGaussian2.GetBuffer("color"));
-        // fsq.DrawToQuarter(horizontalGaussProgram.GetQualfiterLoc("pos"), horizontalGaussProgram.GetQualfiterLoc("texcoord"), 2);
 
+        // combine program
+        glUseProgram(combineProgram.GetGPUProgram());
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("color"));
+        glUniform1i(combineProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("hdrBuffer"));
+        glUniform1i(combineProgram.GetQualfiterLoc("U_HDRTexture"), 1);
+        fsq.DrawToQuarter(combineProgram.GetQualfiterLoc("pos"), combineProgram.GetQualfiterLoc("texcoord"), 3);
+        
         // glUseProgram(verticalGaussProgram.GetGPUProgram());
         // glBindTexture(GL_TEXTURE_2D, fboGaussian1.GetBuffer("color"));
         // fsq.DrawToQuarter(verticalGaussProgram.GetQualfiterLoc("pos"), verticalGaussProgram.GetQualfiterLoc("texcoord"), 3);
         // GL_CHECK_ERROR;
-
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, 0);
         glUseProgram(0); // 重置
         glFinish();
