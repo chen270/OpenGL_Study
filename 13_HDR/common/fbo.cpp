@@ -108,7 +108,7 @@ int FBO::Finish()
     int index = 0;
     while (!mDrawBuffers.empty())
     {
-        buffers[index] = mDrawBuffers.top();
+        buffers[index++] = mDrawBuffers.top();
         mDrawBuffers.pop();
     }
 
