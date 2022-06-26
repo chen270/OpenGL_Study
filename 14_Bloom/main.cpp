@@ -12,12 +12,12 @@ int main()
     Win32Utils utils;
     GLRenderer glRender;
 
-    uint64_t width = 800;
-    uint64_t height = 600;
+    int width = 800;
+    int height = 600;
 
 
     HWND hwnd = utils.CreateWin32Window(width, height);
-    HDC dc = utils.bindWindowWithOpenGL();
+    HDC dc = utils.bindWindowWithOpenGL(width, height);
     glRender.GLInit();
 
 #if 0
