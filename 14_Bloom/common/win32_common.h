@@ -10,11 +10,12 @@ public:
     ~Win32Utils();
 
     HWND CreateWin32Window(const int width, const int height);
-    HDC bindWindowWithOpenGL();
+    HDC bindWindowWithOpenGL(int &width, int &height);
 
 private:
     HWND hwnd;
     HDC  dc;
+    RECT rect;
 };
 
 #endif // __WIN32_COMMON_H__

@@ -22,6 +22,8 @@ LRESULT CALLBACK GLWindowProc(HWND hwnd, UINT msg, WPARAM wparm, LPARAM lparm)
     return DefWindowProc(hwnd, msg, wparm, lparm);
 }
 
+#define RECT_SHOW 1
+
 HWND Win32Utils::CreateWin32Window(const int width, const int height)
 {
     HINSTANCE hinstance = GetModuleHandle(NULL);
@@ -42,20 +44,29 @@ HWND Win32Utils::CreateWin32Window(const int width, const int height)
     wndClass.style = CS_VREDRAW | CS_HREDRAW;
     ATOM atom = RegisterClassEx(&wndClass);
 
+#if RECT_SHOW // add Rect
+    rect.left = 0;
+    rect.top = 0;
+    rect.right = width;
+    rect.bottom = height;
+    AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+    this->hwnd = CreateWindowEx(NULL, L"OpenGL", L"RenderWindow", WS_OVERLAPPEDWINDOW,
+        100, 100, rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, hinstance, NULL);
+#else
     // Place the window in the middle of the screen.
     int posX = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
     int posY = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
 
-    this->hwnd = CreateWindowEx(NULL, L"OpenGL", L"RenderWindow", 
-                                WS_OVERLAPPEDWINDOW, posX, posY, 
+    this->hwnd = CreateWindowEx(NULL, L"OpenGL", L"RenderWindow",
+                                WS_OVERLAPPEDWINDOW, posX, posY,
                                 width, height, NULL, NULL, hinstance, NULL);
-
+#endif
     return this->hwnd;
 }
 
-HDC Win32Utils::bindWindowWithOpenGL()
+HDC Win32Utils::bindWindowWithOpenGL(int &width, int &height)
 {
-    //----OpenGL 绑定windows窗口----------
+    // ----OpenGL 绑定windows窗口----------
     this->dc = GetDC(this->hwnd);
     PIXELFORMATDESCRIPTOR pfd;
     memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
@@ -73,5 +84,12 @@ HDC Win32Utils::bindWindowWithOpenGL()
 
     HGLRC rc = wglCreateContext(dc);
     wglMakeCurrent(dc, rc);
+
+#if RECT_SHOW // add Rect
+	GetClientRect(hwnd, &rect);
+    width = rect.right - rect.left;
+    height = rect.bottom - rect.top;
+#endif
+
     return this->dc;
 }

@@ -11,11 +11,11 @@ void main()
      float texelOffset = texSize.x;
 //    float texelOffset = 1.0 / 150.0;
     vec4 color = texture2D(U_MainTexture, V_Texcoord) * weight[0];
-//    for(int i = 1; i < 5; ++i)
-//    {
-//        color += texture2D(U_MainTexture, vec2(V_Texcoord.x + texelOffset*i, V_Texcoord.y)) * weight[i];
-//        color += texture2D(U_MainTexture, vec2(V_Texcoord.x - texelOffset*i, V_Texcoord.y)) * weight[i];
-//    }
+   for(int i = 1; i < 5; ++i)
+   {
+       color += texture2D(U_MainTexture, vec2(V_Texcoord.x + texelOffset*i, V_Texcoord.y)) * weight[i];
+       color += texture2D(U_MainTexture, vec2(V_Texcoord.x - texelOffset*i, V_Texcoord.y)) * weight[i];
+   }
 
     gl_FragColor= color;
 }

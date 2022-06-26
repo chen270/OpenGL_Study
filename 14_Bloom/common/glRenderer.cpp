@@ -2225,18 +2225,18 @@ int GLRenderer::Bloom(HWND hwnd, HDC dc, int viewW, int viewH)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // 左上, 未处理图像
-        //glUseProgram(originProgram.GetGPUProgram());
-        //glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("color"));
-        //glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
-        //fsq.DrawToQuarter(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("texcoord"), 0);
-        //glBindTexture(GL_TEXTURE_2D, 0);
+        glUseProgram(originProgram.GetGPUProgram());
+        glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("color"));
+        glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        fsq.DrawToQuarter(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("texcoord"), 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
         // 右上，HDR 图
-        //glUseProgram(hdrProgram.GetGPUProgram());
-        //glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("hdrBuffer"));
-        //glUniform1i(hdrProgram.GetQualfiterLoc("U_MainTexture"), 0);
-        //fsq.DrawToQuarter(hdrProgram.GetQualfiterLoc("pos"), hdrProgram.GetQualfiterLoc("texcoord"), 2);
-        //glBindTexture(GL_TEXTURE_2D, 0);
+        glUseProgram(hdrProgram.GetGPUProgram());
+        glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("hdrBuffer"));
+        glUniform1i(hdrProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        fsq.DrawToQuarter(hdrProgram.GetQualfiterLoc("pos"), hdrProgram.GetQualfiterLoc("texcoord"), 2);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
         // 左下, HDR 高斯模糊图
         // 高斯模糊
@@ -2251,7 +2251,7 @@ int GLRenderer::Bloom(HWND hwnd, HDC dc, int viewW, int viewH)
         // glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("hdrBuffer"));
         glBindTexture(GL_TEXTURE_2D, blurRes);
         glUniform1i(combineProgram.GetQualfiterLoc("U_HDRTexture"), 1);
-        fsq.DrawToQuarter(combineProgram.GetQualfiterLoc("pos"), combineProgram.GetQualfiterLoc("texcoord"), 0);
+        fsq.DrawToQuarter(combineProgram.GetQualfiterLoc("pos"), combineProgram.GetQualfiterLoc("texcoord"), 3);
         
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, 0);
