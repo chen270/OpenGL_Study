@@ -2690,7 +2690,7 @@ int GLRenderer::ImageTest_ZPDD(HWND hwnd, HDC dc, int viewW, int viewH)
     combineProgram2.DetectUniforms({"U_BaseTexture","U_BlendTexture"});
     GL_CHECK_ERROR;
 
-    GPUProgram combineProgram3; // 颜色加深
+    GPUProgram combineProgram3; // 颜色减淡
     combineProgram3.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
     combineProgram3.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/moto_lighter.fs"));
     combineProgram3.Link();
@@ -2698,7 +2698,7 @@ int GLRenderer::ImageTest_ZPDD(HWND hwnd, HDC dc, int viewW, int viewH)
     combineProgram3.DetectUniforms({"U_BaseTexture","U_BlendTexture"});
     GL_CHECK_ERROR;
 
-    GPUProgram combineProgram4; // 颜色减淡
+    GPUProgram combineProgram4; // 颜色加深
     combineProgram4.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
     combineProgram4.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/moto_darker.fs"));
     combineProgram4.Link();
@@ -2813,7 +2813,7 @@ int GLRenderer::ImageTest_ZPDD(HWND hwnd, HDC dc, int viewW, int viewH)
         glBindTexture(GL_TEXTURE_2D, 0);
 
 
-        // 左下，颜色加深
+        // 左下，颜色减淡
         glUseProgram(combineProgram3.GetGPUProgram());
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, head); // base
@@ -2824,7 +2824,7 @@ int GLRenderer::ImageTest_ZPDD(HWND hwnd, HDC dc, int viewW, int viewH)
         fsq.DrawToQuarter(combineProgram3.GetQualfiterLoc("pos"), combineProgram3.GetQualfiterLoc("texcoord"), 1);
         glBindTexture(GL_TEXTURE_2D, 0);
 
-        // 右下，颜色减淡
+        // 右下，颜色加深
         glUseProgram(combineProgram4.GetGPUProgram());
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, head); // base
