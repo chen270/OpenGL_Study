@@ -60,7 +60,7 @@ int main()
     // glRender.LightDiffusePixelEnv(hwnd, dc);
     // glRender.LightSpecularPixelEnv(hwnd, dc, width, height);
     // glRender.Erosion_Dilation_MultiGuassian(hwnd, dc, width, height);
-    glRender.Fog_Linear(hwnd, dc, width, height);
+    glRender.Fog_EXPX(hwnd, dc, width, height);
     // glRender.LightDiffuseVertexEnv(hwnd, dc);
 #endif
     return 0;

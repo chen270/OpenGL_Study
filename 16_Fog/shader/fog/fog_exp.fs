@@ -22,6 +22,8 @@ uniform float U_CutOffAngle;
 uniform float U_FogStart;
 uniform float U_FogEnd;
 uniform vec4 U_FogColor;
+uniform float U_FogDensity;
+uniform float U_FogGradient;
 
 
 float CalculateLinearFog(float dis)
@@ -31,6 +33,19 @@ float CalculateLinearFog(float dis)
     return factor; // 雾的 alpha 值
 }
 
+float CalculateExpFog(float dis)
+{
+    float factor = exp(-dis*U_FogDensity); // 求出百分比
+    factor = clamp(factor, 0.0, 1.0); // 规定数值在 0.0 ~ 1.0 之间
+    return factor; // 雾的 alpha 值
+}
+
+float CalculateExpxFog(float dis) // exp x, x 可以任意指定
+{
+    float factor = exp(- pow(dis*U_FogDensity, U_FogGradient ); // 求出百分比
+    factor = clamp(factor, 0.0, 1.0); // 规定数值在 0.0 ~ 1.0 之间
+    return factor; // 雾的 alpha 值
+}
 
 void main()
 {
@@ -114,6 +129,10 @@ void main()
     // gl_FragColor = ambientColor + diffuseColor*attenuation + specularColor*attenuation;
 
     // 这里距离是算 从眼睛到点的z维度的距离，不考虑锥形的那种距离
-    float fogAlpha = CalculateLinearFog(abs(V_EyeSpacePos.z/V_EyeSpacePos.w));
+    float fogAlpha = 0.0;
+    // if (U_FogColor.z > 1.0)
+    //     fogAlpha = CalculateLinearFog(abs(V_EyeSpacePos.z/V_EyeSpacePos.w));
+    // else
+        fogAlpha = CalculateExpxFog(abs(V_EyeSpacePos.z/V_EyeSpacePos.w));
     gl_FragColor = mix(U_FogColor, ambientColor + diffuseColor*attenuation + specularColor*attenuation, fogAlpha);
 }

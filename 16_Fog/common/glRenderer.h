@@ -54,6 +54,8 @@ public:
     int    ImageTest_Smooth(HWND hwnd, HDC dc, int viewW, int viewH);
 
     int    Fog_Linear(HWND hwnd, HDC dc, int viewW, int viewH);
+    int    Fog_EXP(HWND hwnd, HDC dc, int viewW, int viewH);
+    int    Fog_EXPX(HWND hwnd, HDC dc, int viewW, int viewH);
 
 
     int    CartoonVertEnv(HWND hwnd, HDC dc);

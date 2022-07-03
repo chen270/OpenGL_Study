@@ -3442,8 +3442,10 @@ int GLRenderer::Fog_Linear(HWND hwnd, HDC dc, int viewW, int viewH)
     this->BlurInit(viewW, viewH);
 
     // model
-    ObjModel cube, quad, sphere;
-    cube.InitModel(S_PATH("resource/model/Cube.obj"));
+    ObjModel cube1, cube2, cube3;
+    cube1.InitModel(S_PATH("resource/model/Cube.obj"));
+    cube2.InitModel(S_PATH("resource/model/Cube.obj"));
+    cube3.InitModel(S_PATH("resource/model/Cube.obj"));
     // quad.InitModel(S_PATH("resource/model/Quad.obj"));
     // sphere.InitModel(S_PATH("resource/model/Sphere.obj"));
 
@@ -3453,15 +3455,24 @@ int GLRenderer::Fog_Linear(HWND hwnd, HDC dc, int viewW, int viewH)
                                     "U_DiffuseLightColor", "U_DiffuseMaterial",
                                     "U_AmbientLightColor", "U_AmbientMaterial",
                                     "U_SpecularLightColor", "U_SpecularMaterial",
-                                    "U_EyePos", "U_SpotLightDirect", "U_CutOffAngle"});
+                                    "U_EyePos", "U_SpotLightDirect", "U_CutOffAngle",
+                                    "U_FogStart", "U_FogEnd", "U_FogColor"});
     GL_CHECK_ERROR;
 
-    glm::mat4 cubeModel = glm::translate<float>(-2.0f, 0.0f, -2.0f) * glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
     const float WH = static_cast<float>(viewW) / static_cast<float>(viewH);
-    glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
+
+    glm::mat4 cubeModel = glm::translate<float>(-3.0f, 0.0f, 4.0f)* glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
     glm::mat4 normalMatrix = glm::inverseTranspose(cubeModel);
-    glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(5.0, 2.0f, -6.0f),
-                                        glm::vec3(-2.0f, 1.0f, -6.0f),
+
+    glm::mat4 cubeModel2 = glm::translate<float>(-1.0f, 0.0f, 2.0f)* glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 normalMatrix2 = glm::inverseTranspose(cubeModel2);
+
+    glm::mat4 cubeModel3 = glm::translate<float>(1.0f, 0.0f, -6.0f) * glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 normalMatrix3 = glm::inverseTranspose(cubeModel3);
+
+    glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
+    glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(1.0f, -1.0f, 10.0f),
+                                        glm::vec3(0.0f, 1.0f, 0.0f),
                                         glm::vec3(0.0f, 1.0f, 0.0f));
 
     float ambientLightColor[] = {0.4f, 0.4f, 0.4f, 1.0f};
@@ -3471,9 +3482,14 @@ int GLRenderer::Fog_Linear(HWND hwnd, HDC dc, int viewW, int viewH)
     float specularLightColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float specularMaterial[] = {0.8f, 0.8f, 0.8f, 1.0f};
     float lightPos[] = {1.0f, 1.0f, 0.0f, 0.0f};
-    float eyePos[] = {0.0f, 0.0f, 0.0f};
+    float eyePos[] = {-1.0f, 2.0f, 10.0};
     float spotLightDirection[] = {0.0f, -1.0f, 0.0f, 128.0f};
     float spotLightCutOffAngle = 0.0; // degree
+
+    // FOG
+    float fogStart = 2.0f;
+    float fogEnd = 18.0f;
+    float fogColor[] = {0.1f, 0.4f, 0.7f, 1.0f};
 
     // opengl 环境设置
     glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
@@ -3487,7 +3503,7 @@ int GLRenderer::Fog_Linear(HWND hwnd, HDC dc, int viewW, int viewH)
     UpdateWindow(hwnd);
     MSG msg;
     // glClearColor(0.1f, 0.4f, 0.7f, 1.0f);
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClearColor(0.6f, 0.6f, 0.6f, 1.0f);
 
     // 防止程序退出
     while (true)
@@ -3530,13 +3546,19 @@ int GLRenderer::Fog_Linear(HWND hwnd, HDC dc, int viewW, int viewH)
         GL_CHECK_ERROR;
 
         glUniform4fv(originProgram.GetQualfiterLoc("U_SpotLightDirect"), 1, spotLightDirection);
+
+        // fog
+        glUniform1f(originProgram.GetQualfiterLoc("U_FogStart"), fogStart);
+        glUniform1f(originProgram.GetQualfiterLoc("U_FogEnd"), fogEnd);
+        glUniform4fv(originProgram.GetQualfiterLoc("U_FogColor"), 1, fogColor);
+
         GL_CHECK_ERROR;
 
         // 聚光
-        lightPos[0] = -1.8f;
-        lightPos[1] = 3.0f;
-        lightPos[2] = -5.7f;
-        lightPos[3] = 0.0f;
+        // lightPos[0] = -1.8f;
+        // lightPos[1] = 3.0f;
+        // lightPos[2] = -5.7f;
+        // lightPos[3] = 0.0f;
         spotLightCutOffAngle = 0.0f; // 只用方向光
         glUniform1f(originProgram.GetQualfiterLoc("U_CutOffAngle"), spotLightCutOffAngle);
         glUniform4fv(originProgram.GetQualfiterLoc("U_LightPos"), 1, lightPos);
@@ -3547,8 +3569,19 @@ int GLRenderer::Fog_Linear(HWND hwnd, HDC dc, int viewW, int viewH)
         glUniformMatrix4fv(originProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));    // V visual 视口
         glUniformMatrix4fv(originProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
         glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel)); // M model,模型视图移动，
-        cube.Bind(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("normal"));
-        cube.Draw();
+        cube1.Bind(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("normal"));
+        cube1.Draw();
+
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel2)); // M model,模型视图移动，
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix2));  // 投影
+        cube2.Bind(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("normal"));
+        cube2.Draw();
+
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel3)); // M model,模型视图移动，
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix3));  // 投影
+        cube3.Bind(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("normal"));
+        cube3.Draw();
+
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, 0);
         glUseProgram(0); // 重置
@@ -3560,6 +3593,344 @@ int GLRenderer::Fog_Linear(HWND hwnd, HDC dc, int viewW, int viewH)
     glDisable(GL_BLEND);
     return 0;
 }
+
+int GLRenderer::Fog_EXP(HWND hwnd, HDC dc, int viewW, int viewH)
+{
+    GPUProgram originProgram;
+    originProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fog/fog.vs"));
+    originProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/fog/fog_exp.fs"));
+    originProgram.Link();
+    GL_CHECK_ERROR;
+
+    FullScreenQuad fsq;
+    fsq.Init();
+    this->BlurInit(viewW, viewH);
+
+    // model
+    ObjModel cube1, cube2, cube3;
+    cube1.InitModel(S_PATH("resource/model/Cube.obj"));
+    cube2.InitModel(S_PATH("resource/model/Cube.obj"));
+    cube3.InitModel(S_PATH("resource/model/Cube.obj"));
+    // quad.InitModel(S_PATH("resource/model/Quad.obj"));
+    // sphere.InitModel(S_PATH("resource/model/Sphere.obj"));
+
+    // 传递参数到shader
+    originProgram.DetectAttributes({"pos", "texcoord", "normal"});
+    originProgram.DetectUniforms({"M", "V", "P", "NM", "U_LightPos",
+                                    "U_DiffuseLightColor", "U_DiffuseMaterial",
+                                    "U_AmbientLightColor", "U_AmbientMaterial",
+                                    "U_SpecularLightColor", "U_SpecularMaterial",
+                                    "U_EyePos", "U_SpotLightDirect", "U_CutOffAngle",
+                                    "U_FogStart", "U_FogEnd", "U_FogColor", "U_FogDensity"});
+    GL_CHECK_ERROR;
+
+    const float WH = static_cast<float>(viewW) / static_cast<float>(viewH);
+
+    glm::mat4 cubeModel = glm::translate<float>(-3.0f, 0.0f, 4.0f)* glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 normalMatrix = glm::inverseTranspose(cubeModel);
+
+    glm::mat4 cubeModel2 = glm::translate<float>(-1.0f, 0.0f, 2.0f)* glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 normalMatrix2 = glm::inverseTranspose(cubeModel2);
+
+    glm::mat4 cubeModel3 = glm::translate<float>(1.0f, 0.0f, -6.0f) * glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 normalMatrix3 = glm::inverseTranspose(cubeModel3);
+
+    glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
+    glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(1.0f, -1.0f, 10.0f),
+                                        glm::vec3(0.0f, 1.0f, 0.0f),
+                                        glm::vec3(0.0f, 1.0f, 0.0f));
+
+    float ambientLightColor[] = {0.4f, 0.4f, 0.4f, 1.0f};
+    float ambientMaterial[] = {0.4f, 0.4f, 0.4f, 1.0f};
+    float diffuseLightColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float diffuseMaterial[] = {0.4f, 0.4f, 0.4f, 1.0f};
+    float specularLightColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float specularMaterial[] = {0.8f, 0.8f, 0.8f, 1.0f};
+    float lightPos[] = {1.0f, 1.0f, 0.0f, 0.0f};
+    float eyePos[] = {-1.0f, 2.0f, 10.0};
+    float spotLightDirection[] = {0.0f, -1.0f, 0.0f, 128.0f};
+    float spotLightCutOffAngle = 0.0; // degree
+
+    // FOG
+    float fogStart = 2.0f;
+    float fogEnd = 18.0f;
+    float fogColor[] = {0.6f, 0.6f, 0.6f, 1.0f};
+    float fogDensity = 0.1f;
+
+    // opengl 环境设置
+    glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+
+    // 开启 alpha 混合
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+    MSG msg;
+    // glClearColor(0.1f, 0.4f, 0.7f, 1.0f);
+    glClearColor(0.6f, 0.6f, 0.6f, 1.0f);
+
+    // 防止程序退出
+    while (true)
+    {
+        // Windows Message
+        if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        // ----OpenGL start-----
+        // 编译命令
+        // no blur
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // 光照
+        glUseProgram(originProgram.GetGPUProgram());
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));    // V visual 视口
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));  // 投影
+
+        // ambient
+        glUniform4fv(originProgram.GetQualfiterLoc("U_AmbientLightColor"), 1, ambientLightColor);
+        glUniform4fv(originProgram.GetQualfiterLoc("U_AmbientMaterial"), 1, ambientMaterial);
+
+        // diffuse
+        glUniform4fv(originProgram.GetQualfiterLoc("U_DiffuseLightColor"), 1, diffuseLightColor);
+        glUniform4fv(originProgram.GetQualfiterLoc("U_DiffuseMaterial"), 1, diffuseMaterial);
+        GL_CHECK_ERROR;
+
+        // specular
+        glUniform4fv(originProgram.GetQualfiterLoc("U_SpecularLightColor"), 1, specularLightColor);
+        glUniform4fv(originProgram.GetQualfiterLoc("U_SpecularMaterial"), 1, specularMaterial);
+        glUniform3fv(originProgram.GetQualfiterLoc("U_EyePos"), 1, eyePos);
+        GL_CHECK_ERROR;
+
+        glUniform4fv(originProgram.GetQualfiterLoc("U_SpotLightDirect"), 1, spotLightDirection);
+
+        // fog
+        glUniform1f(originProgram.GetQualfiterLoc("U_FogStart"), fogStart);
+        glUniform1f(originProgram.GetQualfiterLoc("U_FogEnd"), fogEnd);
+        glUniform4fv(originProgram.GetQualfiterLoc("U_FogColor"), 1, fogColor);
+        glUniform1f(originProgram.GetQualfiterLoc("U_FogDensity"), fogDensity);
+
+        GL_CHECK_ERROR;
+
+        // 聚光
+        // lightPos[0] = -1.8f;
+        // lightPos[1] = 3.0f;
+        // lightPos[2] = -5.7f;
+        // lightPos[3] = 0.0f;
+        spotLightCutOffAngle = 0.0f; // 只用方向光
+        glUniform1f(originProgram.GetQualfiterLoc("U_CutOffAngle"), spotLightCutOffAngle);
+        glUniform4fv(originProgram.GetQualfiterLoc("U_LightPos"), 1, lightPos);
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel)); // M model,模型视图移动，
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));  // 投影
+        GL_CHECK_ERROR;
+
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));    // V visual 视口
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel)); // M model,模型视图移动，
+        cube1.Bind(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("normal"));
+        cube1.Draw();
+
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel2)); // M model,模型视图移动，
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix2));  // 投影
+        cube2.Bind(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("normal"));
+        cube2.Draw();
+
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel3)); // M model,模型视图移动，
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix3));  // 投影
+        cube3.Bind(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("normal"));
+        cube3.Draw();
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glUseProgram(0); // 重置
+        glFinish();
+        SwapBuffers(dc);
+        // ----OpenGL end  -----
+    }
+
+    glDisable(GL_BLEND);
+    return 0;
+}
+
+int GLRenderer::Fog_EXPX(HWND hwnd, HDC dc, int viewW, int viewH)
+{
+    GPUProgram originProgram;
+    originProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fog/fog.vs"));
+    originProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/fog/fog_expx.fs"));
+    originProgram.Link();
+    GL_CHECK_ERROR;
+
+    FullScreenQuad fsq;
+    fsq.Init();
+    this->BlurInit(viewW, viewH);
+
+    // model
+    ObjModel cube1, cube2, cube3;
+    cube1.InitModel(S_PATH("resource/model/Cube.obj"));
+    cube2.InitModel(S_PATH("resource/model/Cube.obj"));
+    cube3.InitModel(S_PATH("resource/model/Cube.obj"));
+    // quad.InitModel(S_PATH("resource/model/Quad.obj"));
+    // sphere.InitModel(S_PATH("resource/model/Sphere.obj"));
+
+    // 传递参数到shader
+    originProgram.DetectAttributes({"pos", "texcoord", "normal"});
+    originProgram.DetectUniforms({"M", "V", "P", "NM", "U_LightPos",
+                                    "U_DiffuseLightColor", "U_DiffuseMaterial",
+                                    "U_AmbientLightColor", "U_AmbientMaterial",
+                                    "U_SpecularLightColor", "U_SpecularMaterial",
+                                    "U_EyePos", "U_SpotLightDirect", "U_CutOffAngle",
+                                    "U_FogStart", "U_FogEnd", "U_FogColor", "U_FogDensity", "U_FogGradient"});
+    GL_CHECK_ERROR;
+
+    const float WH = static_cast<float>(viewW) / static_cast<float>(viewH);
+
+    glm::mat4 cubeModel = glm::translate<float>(-3.0f, 0.0f, 4.0f)* glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 normalMatrix = glm::inverseTranspose(cubeModel);
+
+    glm::mat4 cubeModel2 = glm::translate<float>(-1.0f, 0.0f, 2.0f)* glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 normalMatrix2 = glm::inverseTranspose(cubeModel2);
+
+    glm::mat4 cubeModel3 = glm::translate<float>(1.0f, 0.0f, -6.0f) * glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 normalMatrix3 = glm::inverseTranspose(cubeModel3);
+
+    glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
+    glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(1.0f, -1.0f, 10.0f),
+                                        glm::vec3(0.0f, 1.0f, 0.0f),
+                                        glm::vec3(0.0f, 1.0f, 0.0f));
+
+    float ambientLightColor[] = {0.4f, 0.4f, 0.4f, 1.0f};
+    float ambientMaterial[] = {0.4f, 0.4f, 0.4f, 1.0f};
+    float diffuseLightColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float diffuseMaterial[] = {0.4f, 0.4f, 0.4f, 1.0f};
+    float specularLightColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float specularMaterial[] = {0.8f, 0.8f, 0.8f, 1.0f};
+    float lightPos[] = {1.0f, 1.0f, 0.0f, 0.0f};
+    float eyePos[] = {-1.0f, 2.0f, 10.0};
+    float spotLightDirection[] = {0.0f, -1.0f, 0.0f, 128.0f};
+    float spotLightCutOffAngle = 0.0; // degree
+
+    // FOG
+    float fogStart = 2.0f;
+    float fogEnd = 18.0f;
+    float fogColor[] = {0.6f, 0.6f, 0.6f, 1.0f};
+    float fogDensity = 0.1f;
+    float fogGradient = 2.0f; // OpenGL 固定管线中指定的就是 2
+
+
+    // opengl 环境设置
+    glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+
+    // 开启 alpha 混合
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+    MSG msg;
+    // glClearColor(0.1f, 0.4f, 0.7f, 1.0f);
+    glClearColor(0.6f, 0.6f, 0.6f, 1.0f);
+
+    // 防止程序退出
+    while (true)
+    {
+        // Windows Message
+        if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        // ----OpenGL start-----
+        // 编译命令
+        // no blur
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // 光照
+        glUseProgram(originProgram.GetGPUProgram());
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));    // V visual 视口
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));  // 投影
+
+        // ambient
+        glUniform4fv(originProgram.GetQualfiterLoc("U_AmbientLightColor"), 1, ambientLightColor);
+        glUniform4fv(originProgram.GetQualfiterLoc("U_AmbientMaterial"), 1, ambientMaterial);
+
+        // diffuse
+        glUniform4fv(originProgram.GetQualfiterLoc("U_DiffuseLightColor"), 1, diffuseLightColor);
+        glUniform4fv(originProgram.GetQualfiterLoc("U_DiffuseMaterial"), 1, diffuseMaterial);
+        GL_CHECK_ERROR;
+
+        // specular
+        glUniform4fv(originProgram.GetQualfiterLoc("U_SpecularLightColor"), 1, specularLightColor);
+        glUniform4fv(originProgram.GetQualfiterLoc("U_SpecularMaterial"), 1, specularMaterial);
+        glUniform3fv(originProgram.GetQualfiterLoc("U_EyePos"), 1, eyePos);
+        GL_CHECK_ERROR;
+
+        glUniform4fv(originProgram.GetQualfiterLoc("U_SpotLightDirect"), 1, spotLightDirection);
+
+        // fog
+        glUniform1f(originProgram.GetQualfiterLoc("U_FogStart"), fogStart);
+        glUniform1f(originProgram.GetQualfiterLoc("U_FogEnd"), fogEnd);
+        glUniform4fv(originProgram.GetQualfiterLoc("U_FogColor"), 1, fogColor);
+        glUniform1f(originProgram.GetQualfiterLoc("U_FogDensity"), fogDensity);
+        glUniform1f(originProgram.GetQualfiterLoc("U_FogGradient"), fogGradient);
+
+        GL_CHECK_ERROR;
+
+        // 聚光
+        // lightPos[0] = -1.8f;
+        // lightPos[1] = 3.0f;
+        // lightPos[2] = -5.7f;
+        // lightPos[3] = 0.0f;
+        spotLightCutOffAngle = 0.0f; // 只用方向光
+        glUniform1f(originProgram.GetQualfiterLoc("U_CutOffAngle"), spotLightCutOffAngle);
+        glUniform4fv(originProgram.GetQualfiterLoc("U_LightPos"), 1, lightPos);
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel)); // M model,模型视图移动，
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));  // 投影
+        GL_CHECK_ERROR;
+
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));    // V visual 视口
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel)); // M model,模型视图移动，
+        cube1.Bind(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("normal"));
+        cube1.Draw();
+
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel2)); // M model,模型视图移动，
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix2));  // 投影
+        cube2.Bind(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("normal"));
+        cube2.Draw();
+
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel3)); // M model,模型视图移动，
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix3));  // 投影
+        cube3.Bind(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("normal"));
+        cube3.Draw();
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glUseProgram(0); // 重置
+        glFinish();
+        SwapBuffers(dc);
+        // ----OpenGL end  -----
+    }
+
+    glDisable(GL_BLEND);
+    return 0;
+}
+
 
 void GLRenderer::BlurInit(int viewW, int viewH)
 {
