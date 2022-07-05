@@ -3939,6 +3939,18 @@ int GLRenderer::Skybox(HWND hwnd, HDC dc, int viewW, int viewH)
     originProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/skybox.vs"));
     originProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/skybox.fs"));
     originProgram.Link();
+
+    // 传递参数到shader
+    originProgram.DetectAttributes({"pos"});
+    originProgram.DetectUniforms({"M", "V", "P", "U_MainTexture"});
+    GL_CHECK_ERROR;
+
+    GPUProgram sphereProgram;
+    sphereProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/test/sphere.vs"));
+    sphereProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/test/sphere.fs"));
+    sphereProgram.Link();
+    sphereProgram.DetectAttributes({"pos"});
+    sphereProgram.DetectUniforms({"M", "V", "P"});
     GL_CHECK_ERROR;
 
     FullScreenQuad fsq;
@@ -3946,24 +3958,25 @@ int GLRenderer::Skybox(HWND hwnd, HDC dc, int viewW, int viewH)
     this->BlurInit(viewW, viewH);
 
     // model
-    ObjModel cube1, cube2, cube3;
+    ObjModel cube1, sphere;
     cube1.InitModel(S_PATH("resource/model/Cube.obj"));
-
-    // 传递参数到shader
-    originProgram.DetectAttributes({"pos"});
-    originProgram.DetectUniforms({"M", "V", "P", "U_MainTexture"});
-    GL_CHECK_ERROR;
+    sphere.InitModel(S_PATH("resource/model/Sphere.obj"));
 
     const float WH = static_cast<float>(viewW) / static_cast<float>(viewH);
 
     glm::mat4 cubeModel ;//= glm::translate<float>(-3.0f, 0.0f, 4.0f)* glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
     glm::mat4 normalMatrix = glm::inverseTranspose(cubeModel);
-
     glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
-    glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f),
+    // glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f),
+    //                                     glm::vec3(0.0f, 1.0f, 0.0f),
+    //                                     glm::vec3(0.0f, 1.0f, 0.0f));
+
+    glm::mat4 sphereModel = glm::translate<float>(0.0f, 0.0f, -4.0f) * glm::scale<float>(0.5f,0.5f,0.5f);
+    glm::mat4 sphereNormalMatrix = glm::inverseTranspose(sphereModel);
+
+    glm::mat4 sphereViewMatrix1 = glm::lookAt(glm::vec3(1.0f, 0.0f, 0.0f),
                                         glm::vec3(0.0f, 1.0f, 0.0f),
                                         glm::vec3(0.0f, 1.0f, 0.0f));
-
 
     GLuint mainTexture = SOIL_load_OGL_cubemap("resource/image/skybox/right.bmp", "resource/image/skybox/left.bmp",
                                                 "resource/image/skybox/top.bmp", "resource/image/skybox/bottom.bmp",
@@ -4003,9 +4016,9 @@ int GLRenderer::Skybox(HWND hwnd, HDC dc, int viewW, int viewH)
         // no blur
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // 光照
+        glDisable(GL_DEPTH_TEST);
         glUseProgram(originProgram.GetGPUProgram());
-        glUniformMatrix4fv(originProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));    // V visual 视口
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("V"), 1, GL_FALSE, identity);    // V visual 视口
         glUniformMatrix4fv(originProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
         glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel)); // M model,模型视图移动
 
@@ -4017,6 +4030,17 @@ int GLRenderer::Skybox(HWND hwnd, HDC dc, int viewW, int viewH)
 
         cube1.Bind(originProgram.GetQualfiterLoc("pos")); //, originProgram.GetQualfiterLoc("texcoord"), originProgram.GetQualfiterLoc("normal"));
         cube1.Draw();
+        glEnable(GL_DEPTH_TEST);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        // Test
+        glUseProgram(sphereProgram.GetGPUProgram());
+        glUniformMatrix4fv(sphereProgram.GetQualfiterLoc("V"), 1, GL_FALSE, identity);    // V visual 视口
+        glUniformMatrix4fv(sphereProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
+        glUniformMatrix4fv(sphereProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(sphereModel)); // M model,模型视图移动
+        sphere.Bind(sphereProgram.GetQualfiterLoc("pos"));
+        sphere.Draw();
+        GL_CHECK_ERROR;
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, 0);
