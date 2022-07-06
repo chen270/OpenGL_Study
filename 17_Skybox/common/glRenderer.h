@@ -57,7 +57,9 @@ public:
     int    Fog_EXP(HWND hwnd, HDC dc, int viewW, int viewH);
     int    Fog_EXPX(HWND hwnd, HDC dc, int viewW, int viewH);
     int    Skybox(HWND hwnd, HDC dc, int viewW, int viewH);
-
+    int    SkyboxReflection(HWND hwnd, HDC dc, int viewW, int viewH);
+    int    SkyboxReflectionTest(HWND hwnd, HDC dc, int viewW, int viewH);
+    int    SkyboxRefraction(HWND hwnd, HDC dc, int viewW, int viewH);
 
     int    CartoonVertEnv(HWND hwnd, HDC dc);
     int    CartoonPixelEnv(HWND hwnd, HDC dc);

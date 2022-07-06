@@ -3978,9 +3978,9 @@ int GLRenderer::Skybox(HWND hwnd, HDC dc, int viewW, int viewH)
                                         glm::vec3(0.0f, 1.0f, 0.0f),
                                         glm::vec3(0.0f, 1.0f, 0.0f));
 
-    GLuint mainTexture = SOIL_load_OGL_cubemap("resource/image/skybox/right.bmp", "resource/image/skybox/left.bmp",
-                                                "resource/image/skybox/top.bmp", "resource/image/skybox/bottom.bmp",
-                                                "resource/image/skybox/back.bmp", "resource/image/skybox/front.bmp",
+    GLuint mainTexture = SOIL_load_OGL_cubemap("resource/image/skybox/right.png", "resource/image/skybox/left.png",
+                                                "resource/image/skybox/top.png", "resource/image/skybox/bottom.png",
+                                                "resource/image/skybox/back.png", "resource/image/skybox/front.png",
                                                 0, 0, SOIL_FLAG_POWER_OF_TWO);
 
     // opengl 环境设置
@@ -4040,6 +4040,355 @@ int GLRenderer::Skybox(HWND hwnd, HDC dc, int viewW, int viewH)
         glUniformMatrix4fv(sphereProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(sphereModel)); // M model,模型视图移动
         sphere.Bind(sphereProgram.GetQualfiterLoc("pos"));
         sphere.Draw();
+        GL_CHECK_ERROR;
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glUseProgram(0); // 重置
+        glFinish();
+        SwapBuffers(dc);
+        // ----OpenGL end  -----
+    }
+
+    glDisable(GL_BLEND);
+    return 0;
+}
+
+int GLRenderer::SkyboxReflection(HWND hwnd, HDC dc, int viewW, int viewH)
+{
+    GPUProgram originProgram;
+    originProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/sky/skybox.vs"));
+    originProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/sky/skybox.fs"));
+    originProgram.Link();
+
+    // 传递参数到shader
+    originProgram.DetectAttributes({"pos"});
+    originProgram.DetectUniforms({"M", "V", "P", "U_MainTexture"});
+    GL_CHECK_ERROR;
+
+    GPUProgram reflectionProgram;
+    reflectionProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/sky/reflection.vs"));
+    reflectionProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/sky/reflection.fs"));
+    reflectionProgram.Link();
+    reflectionProgram.DetectAttributes({"pos", "normal"});
+    reflectionProgram.DetectUniforms({"M", "V", "P", "NM", "U_MainTexture"});
+    GL_CHECK_ERROR;
+
+    FullScreenQuad fsq;
+    fsq.Init();
+    this->BlurInit(viewW, viewH);
+
+    // model
+    ObjModel cube1, sphere;
+    cube1.InitModel(S_PATH("resource/model/Cube.obj"));
+    sphere.InitModel(S_PATH("resource/model/Sphere.obj"));
+
+    const float WH = static_cast<float>(viewW) / static_cast<float>(viewH);
+
+    glm::mat4 cubeModel; // = glm::translate<float>(-3.0f, 0.0f, 4.0f)* glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 normalMatrix = glm::inverseTranspose(cubeModel);
+    glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
+    // glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f),
+    //                                     glm::vec3(0.0f, 1.0f, 0.0f),
+    //                                     glm::vec3(0.0f, 1.0f, 0.0f));
+
+    glm::mat4 sphereModel = glm::translate<float>(0.0f, 0.0f, -4.0f);// * glm::scale<float>(0.1f,0.1f,0.1f);
+    glm::mat4 sphereNormalMatrix = glm::inverseTranspose(sphereModel);
+
+    glm::mat4 sphereViewMatrix1 = glm::lookAt(glm::vec3(1.0f, 0.0f, 0.0f),
+                                        glm::vec3(0.0f, 1.0f, 0.0f),
+                                        glm::vec3(0.0f, 1.0f, 0.0f));
+
+    GLuint mainTexture = SOIL_load_OGL_cubemap(S_PATH("resource/image/skybox/right.png"), S_PATH("resource/image/skybox/left.png"),
+                                                S_PATH("resource/image/skybox/top.png"), S_PATH("resource/image/skybox/bottom.png"),
+                                                S_PATH("resource/image/skybox/back.png"), S_PATH("resource/image/skybox/front.png"),
+                                                0, 0, SOIL_FLAG_POWER_OF_TWO);
+
+    // opengl 环境设置
+    glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+
+    // 开启 alpha 混合
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+    MSG msg;
+    // glClearColor(0.1f, 0.4f, 0.7f, 1.0f);
+    glClearColor(0.6f, 0.6f, 0.6f, 1.0f);
+
+    // 防止程序退出
+    while (true)
+    {
+        // Windows Message
+        if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        // ----OpenGL start-----
+        // 编译命令
+        // no blur
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glDisable(GL_DEPTH_TEST);
+        glUseProgram(originProgram.GetGPUProgram());
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("V"), 1, GL_FALSE, identity);    // V visual 视口
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel)); // M model,模型视图移动
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, mainTexture); // base
+        glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        cube1.Bind(originProgram.GetQualfiterLoc("pos")); //, originProgram.GetQualfiterLoc("texcoord"), originProgram.GetQualfiterLoc("normal"));
+        cube1.Draw();
+        glEnable(GL_DEPTH_TEST);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        GL_CHECK_ERROR;
+
+        // Test
+        glUseProgram(reflectionProgram.GetGPUProgram());
+        glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("V"), 1, GL_FALSE, identity);    // V visual 视口
+        glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
+        glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(sphereModel)); // M model,模型视图移动
+        glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(sphereNormalMatrix));
+        glBindTexture(GL_TEXTURE_CUBE_MAP, mainTexture); // base
+        glUniform1i(reflectionProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        sphere.Bind(reflectionProgram.GetQualfiterLoc("pos"), reflectionProgram.GetQualfiterLoc("normal"));
+        sphere.Draw();
+        GL_CHECK_ERROR;
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glUseProgram(0); // 重置
+        glFinish();
+        SwapBuffers(dc);
+        // ----OpenGL end  -----
+    }
+
+    glDisable(GL_BLEND);
+    return 0;
+}
+
+int GLRenderer::SkyboxReflectionTest(HWND hwnd, HDC dc, int viewW, int viewH)
+{
+	GPUProgram originalProgram;
+	originalProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/sky/skybox.vs"));
+	originalProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/sky/skybox.fs"));
+	originalProgram.Link();
+	originalProgram.DetectAttributes({"pos", "texcoord", "normal"});
+	originalProgram.DetectUniforms({"M", "V", "P", "U_MainTexture"});
+
+	GPUProgram reflectionProgram;
+	reflectionProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/sky/reflection.vs"));
+	reflectionProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/sky/reflection.fs"));
+	reflectionProgram.Link();
+	reflectionProgram.DetectAttributes({"pos", "texcoord", "normal"});
+	reflectionProgram.DetectUniforms({"M", "V", "P", "NM", "U_MainTexture"});
+
+	//init 3d model
+	ObjModel cube,sphere;
+	cube.InitModel(S_PATH("resource/model/Cube.obj"));
+	sphere.InitModel(S_PATH("resource/model/Sphere.obj"));
+
+	float identity[] = {
+		1.0f,0,0,0,
+		0,1.0f,0,0,
+		0,0,1.0f,0,
+		0,0,0,1.0f
+	};
+
+	glm::mat4 cubeModel;
+	glm::mat4 sphereModel = glm::translate(0.0f, 0.0f, -4.0f);
+	glm::mat4 sphereNormalMatrix = glm::inverseTranspose(sphereModel);
+	glm::mat4 cubeNormalMatrix = glm::inverseTranspose(cubeModel);
+
+    glm::mat4 projectionMatrix = glm::perspective(50.0f, (float)viewW / (float)viewH, 0.1f, 1000.0f);
+    glClearColor(0.6f, 0.6f, 0.6f, 1.0f);
+
+    GLuint mainTexture = SOIL_load_OGL_cubemap("resource/image/skybox/right.png", "resource/image/skybox/left.png",
+                                               "resource/image/skybox/top.png", "resource/image/skybox/bottom.png",
+                                               "resource/image/skybox/back.png", "resource/image/skybox/front.png",
+                                               0, 0, SOIL_FLAG_POWER_OF_TWO);
+    ShowWindow(hwnd, SW_SHOW);
+	UpdateWindow(hwnd);
+
+	MSG msg;
+	while (true)
+	{
+		if (PeekMessage(&msg,NULL,NULL,NULL,PM_REMOVE))
+		{
+			if (msg.message==WM_QUIT)
+			{
+				break;
+			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glDisable(GL_DEPTH_TEST);
+		//normal rgba
+		glUseProgram(originalProgram.GetGPUProgram());
+		glUniformMatrix4fv(originalProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel));
+		glUniformMatrix4fv(originalProgram.GetQualfiterLoc("V"), 1, GL_FALSE, identity);
+		glUniformMatrix4fv(originalProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+		glBindTexture(GL_TEXTURE_CUBE_MAP, mainTexture);
+		glUniform1i(originalProgram.GetQualfiterLoc("U_MainTexture"),0);
+		cube.Bind(originalProgram.GetQualfiterLoc("pos"), originalProgram.GetQualfiterLoc("texcoord"), originalProgram.GetQualfiterLoc("normal"));
+		cube.Draw();
+		glEnable(GL_DEPTH_TEST);
+		//draw sphere
+		glUseProgram(reflectionProgram.GetGPUProgram());
+		glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(sphereModel));
+		glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("V"), 1, GL_FALSE, identity);
+		glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+		glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(sphereNormalMatrix));
+
+		glBindTexture(GL_TEXTURE_CUBE_MAP, mainTexture);
+		glUniform1i(reflectionProgram.GetQualfiterLoc("U_MainTexture"), 0);
+		sphere.Bind(reflectionProgram.GetQualfiterLoc("pos"), reflectionProgram.GetQualfiterLoc("texcoord"), reflectionProgram.GetQualfiterLoc("normal"));
+		sphere.Draw();
+
+		glFlush();
+		SwapBuffers(dc);
+	}
+	return 0;
+}
+
+int GLRenderer::SkyboxRefraction(HWND hwnd, HDC dc, int viewW, int viewH)
+{
+    GPUProgram originProgram;
+    originProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/sky/skybox.vs"));
+    originProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/sky/skybox.fs"));
+    originProgram.Link();
+
+    // 传递参数到shader
+    originProgram.DetectAttributes({"pos"});
+    originProgram.DetectUniforms({"M", "V", "P", "U_MainTexture"});
+    GL_CHECK_ERROR;
+
+    GPUProgram reflectionProgram;
+    reflectionProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/sky/reflection.vs"));
+    reflectionProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/sky/reflection.fs"));
+    reflectionProgram.Link();
+    reflectionProgram.DetectAttributes({"pos", "normal"});
+    reflectionProgram.DetectUniforms({"M", "V", "P", "NM", "U_MainTexture"});
+    GL_CHECK_ERROR;
+
+    GPUProgram refractionProgram;
+    refractionProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/sky/refraction.vs"));
+    refractionProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/sky/refraction.fs"));
+    refractionProgram.Link();
+    refractionProgram.DetectAttributes({"pos", "normal"});
+    refractionProgram.DetectUniforms({"M", "V", "P", "NM", "U_MainTexture"});
+    GL_CHECK_ERROR;
+
+    FullScreenQuad fsq;
+    fsq.Init();
+    this->BlurInit(viewW, viewH);
+
+    // model
+    ObjModel cube1, sphereReflect, sphereRefract;
+    cube1.InitModel(S_PATH("resource/model/Cube.obj"));
+    sphereReflect.InitModel(S_PATH("resource/model/Sphere.obj"));
+    sphereRefract.InitModel(S_PATH("resource/model/Sphere.obj"));
+
+    const float WH = static_cast<float>(viewW) / static_cast<float>(viewH);
+
+    glm::mat4 cubeModel; // = glm::translate<float>(-3.0f, 0.0f, 4.0f)* glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
+    glm::mat4 normalMatrix = glm::inverseTranspose(cubeModel);
+    glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
+    // glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f),
+    //                                     glm::vec3(0.0f, 1.0f, 0.0f),
+    //                                     glm::vec3(0.0f, 1.0f, 0.0f));
+
+    glm::mat4 sphereModelReflect = glm::translate<float>(-1.5f, 0.0f, -4.0f);// * glm::scale<float>(0.1f,0.1f,0.1f);
+    glm::mat4 sphereNormalMatrixA = glm::inverseTranspose(sphereModelReflect);
+
+    glm::mat4 sphereModelRefract = glm::translate<float>(1.5f, 0.0f, -4.0f);
+    glm::mat4 sphereNormalMatrixB = glm::inverseTranspose(sphereModelRefract);
+
+    GLuint mainTexture = SOIL_load_OGL_cubemap(S_PATH("resource/image/skybox/right.png"), S_PATH("resource/image/skybox/left.png"),
+                                                S_PATH("resource/image/skybox/top.png"), S_PATH("resource/image/skybox/bottom.png"),
+                                                S_PATH("resource/image/skybox/back.png"), S_PATH("resource/image/skybox/front.png"),
+                                                0, 0, SOIL_FLAG_POWER_OF_TWO);
+
+    // opengl 环境设置
+    glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+
+    // 开启 alpha 混合
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+    MSG msg;
+    // glClearColor(0.1f, 0.4f, 0.7f, 1.0f);
+    glClearColor(0.6f, 0.6f, 0.6f, 1.0f);
+
+    // 防止程序退出
+    while (true)
+    {
+        // Windows Message
+        if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        // ----OpenGL start-----
+        // 编译命令
+        // no blur
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glDisable(GL_DEPTH_TEST);
+        glUseProgram(originProgram.GetGPUProgram());
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("V"), 1, GL_FALSE, identity);    // V visual 视口
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
+        glUniformMatrix4fv(originProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(cubeModel)); // M model,模型视图移动
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, mainTexture); // base
+        glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        cube1.Bind(originProgram.GetQualfiterLoc("pos")); //, originProgram.GetQualfiterLoc("texcoord"), originProgram.GetQualfiterLoc("normal"));
+        cube1.Draw();
+        glEnable(GL_DEPTH_TEST);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        GL_CHECK_ERROR;
+
+        // Test
+        glUseProgram(reflectionProgram.GetGPUProgram());
+        glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("V"), 1, GL_FALSE, identity);    // V visual 视口
+        glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
+        glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(sphereModelReflect)); // M model,模型视图移动
+        glUniformMatrix4fv(reflectionProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(sphereNormalMatrixA));
+        glBindTexture(GL_TEXTURE_CUBE_MAP, mainTexture); // base
+        glUniform1i(reflectionProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        sphereReflect.Bind(reflectionProgram.GetQualfiterLoc("pos"), reflectionProgram.GetQualfiterLoc("normal"));
+        sphereReflect.Draw();
+        GL_CHECK_ERROR;
+
+        glUseProgram(refractionProgram.GetGPUProgram());
+        glUniformMatrix4fv(refractionProgram.GetQualfiterLoc("V"), 1, GL_FALSE, identity);    // V visual 视口
+        glUniformMatrix4fv(refractionProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
+        glUniformMatrix4fv(refractionProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(sphereModelRefract)); // M model,模型视图移动
+        glUniformMatrix4fv(refractionProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(sphereNormalMatrixB));
+        glBindTexture(GL_TEXTURE_CUBE_MAP, mainTexture); // base
+        glUniform1i(refractionProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        sphereReflect.Bind(refractionProgram.GetQualfiterLoc("pos"), refractionProgram.GetQualfiterLoc("normal"));
+        sphereReflect.Draw();
         GL_CHECK_ERROR;
 
         glActiveTexture(GL_TEXTURE0);
