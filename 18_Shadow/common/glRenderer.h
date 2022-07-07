@@ -62,6 +62,7 @@ public:
     int    SkyboxRefraction(HWND hwnd, HDC dc, int viewW, int viewH);
 
     int    ShadowTest1(HWND hwnd, HDC dc, int viewW, int viewH);
+    int    ShadowTest1_Ref(HWND hwnd, HDC dc, int viewW, int viewH);
 
 
     int    CartoonVertEnv(HWND hwnd, HDC dc);

@@ -21,6 +21,10 @@ public:
     void DetectAttributes(std::initializer_list<const char*>attributeNames);
     void DetectUniforms(std::initializer_list<const char*>uniformNames);
     GLint GetQualfiterLoc(const char* name);
+
+    void DetectAttribute(const char *attributeName);
+    void DetectUniform(const char*uniformName);
+
 private:
     GLuint CompileShader(GLenum shaderType, const char *shaderPath);
     GLuint mProgram;

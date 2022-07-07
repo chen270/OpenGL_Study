@@ -168,3 +168,21 @@ GLint GPUProgram::GetQualfiterLoc(const char *name)
 
     return iter->second;
 }
+
+void GPUProgram::DetectAttribute(const char*attributeName)
+{
+	GLint loc = glGetAttribLocation(mProgram, attributeName);
+	if (loc!=-1)
+	{
+		mQualfitersLoc.insert(std::pair<std::string,GLint>(attributeName,loc));
+	}
+}
+
+void GPUProgram::DetectUniform(const char*uniformName)
+{
+	GLint loc = glGetUniformLocation(mProgram, uniformName);
+	if (loc != -1)
+	{
+        mQualfitersLoc.insert(std::pair<std::string, GLint>(uniformName, loc));
+    }
+}

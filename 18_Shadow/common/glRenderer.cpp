@@ -4453,6 +4453,14 @@ int GLRenderer::ShadowTest1(HWND hwnd, HDC dc, int viewW, int viewH)
     depthProgram.DetectUniforms({"M", "V", "P"});
     GL_CHECK_ERROR;
 
+    GPUProgram depthRendererProgram;
+    depthRendererProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
+    depthRendererProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/shadow/depthRenderer.fs"));
+    depthRendererProgram.Link();
+    depthRendererProgram.DetectAttributes({"pos", "texcoord"});
+    depthRendererProgram.DetectUniforms({"U_MainTexture"});
+    GL_CHECK_ERROR;
+
     FullScreenQuad fsq;
     fsq.Init();
     this->BlurInit(viewW, viewH);
@@ -4499,7 +4507,7 @@ int GLRenderer::ShadowTest1(HWND hwnd, HDC dc, int viewW, int viewH)
                                         glm::vec3(6.0f, 0.0f, -6.0f),
                                         glm::vec3(0.0f, 0.0f, -1.0f));
     // 正射投影
-    glm::mat4 lightProjectMatrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 20.0f);
+    glm::mat4 lightProjectMatrix = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f);
 
 
     glm::mat4 quadModel = glm::translate<float>(6.0f, -1.5f, -6.0f) * glm::rotate<float>(-90.0f, 1.0f, 0.0f, 0.0f)
@@ -4511,7 +4519,7 @@ int GLRenderer::ShadowTest1(HWND hwnd, HDC dc, int viewW, int viewH)
 
     // 第一帧拿到 depthFBU 上，这样就能拿到深度图
     FBO depthFBO;
-    depthFBO.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGBA, viewW, viewH);
+    depthFBO.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGB, viewW, viewH);
     depthFBO.AttachDepthBuffer("depth", viewW, viewH);
     depthFBO.Finish();
 
@@ -4640,10 +4648,10 @@ int GLRenderer::ShadowTest1(HWND hwnd, HDC dc, int viewW, int viewH)
         // glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(originProgram.GetGPUProgram());
-        glBindTexture(GL_TEXTURE_2D, depthFBO.GetBuffer("color"));
-        glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
-        fsq.DrawToQuarter(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("texcoord"), 2); // 右上
+        glUseProgram(depthRendererProgram.GetGPUProgram());
+        glBindTexture(GL_TEXTURE_2D, depthFBO.GetBuffer("depth"));
+        glUniform1i(depthRendererProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        fsq.DrawToQuarter(depthRendererProgram.GetQualfiterLoc("pos"), depthRendererProgram.GetQualfiterLoc("texcoord"), 2); // 右上
         glBindTexture(GL_TEXTURE_2D, 0);
 
         // 右上，HDR 图
@@ -4710,6 +4718,277 @@ void GLRenderer::BlurInit(int viewW, int viewH)
     mSimpGaussProgramV->DetectAttributes({"pos", "texcoord"});
     mSimpGaussProgramV->DetectUniforms({"U_MainTexture"});
     GL_CHECK_ERROR;
+}
+
+int GLRenderer::ShadowTest1_Ref(HWND hwnd, HDC dc, int viewW, int viewH)
+{
+	GPUProgram originalProgram;
+	originalProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenquad.vs"));
+	originalProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/fullscreenquad.fs"));
+	originalProgram.Link();
+	originalProgram.DetectAttribute("pos");
+	originalProgram.DetectAttribute("texcoord");
+	originalProgram.DetectUniform("U_MainTexture");
+
+	GPUProgram depthrendererProgram;
+	depthrendererProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenquad.vs"));
+	depthrendererProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/shadow/depthrenderer.fs"));
+	depthrendererProgram.Link();
+	depthrendererProgram.DetectAttribute("pos");
+	depthrendererProgram.DetectAttribute("texcoord");
+	depthrendererProgram.DetectUniform("U_MainTexture");
+
+	GPUProgram hdrProgram;
+	hdrProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenquad.vs"));
+	hdrProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/hdrrender.fs"));
+	hdrProgram.Link();
+	hdrProgram.DetectAttribute("pos");
+	hdrProgram.DetectAttribute("texcoord");
+	hdrProgram.DetectUniform("U_MainTexture");
+
+	GPUProgram combineProgram;
+	combineProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenquad.vs"));
+	combineProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/combineHDRAndNormal.fs"));
+	combineProgram.Link();
+	combineProgram.DetectAttribute("pos");
+	combineProgram.DetectAttribute("texcoord");
+	combineProgram.DetectUniform("U_MainTexture");
+	combineProgram.DetectUniform("U_HDRTexture");
+
+	// HorizontalProgram = new GPUProgram;
+	// HorizontalProgram->AttachShader(GL_VERTEX_SHADER, "res/shader/fullscreenquad.vs");
+	// HorizontalProgram->AttachShader(GL_FRAGMENT_SHADER, "res/shader/GaussianHorizontal.fs");
+	// HorizontalProgram->Link();
+	// HorizontalProgram->DetectAttribute("pos");
+	// HorizontalProgram->DetectAttribute("texcoord");
+	// HorizontalProgram->DetectUniform("U_MainTexture");
+
+	// verticalProgram = new GPUProgram;
+	// verticalProgram->AttachShader(GL_VERTEX_SHADER, "res/shader/fullscreenquad.vs");
+	// verticalProgram->AttachShader(GL_FRAGMENT_SHADER, "res/shader/GaussianVertical.fs");
+	// verticalProgram->Link();
+	// verticalProgram->DetectAttribute("pos");
+	// verticalProgram->DetectAttribute("texcoord");
+	// verticalProgram->DetectUniform("U_MainTexture");
+
+	GPUProgram lightSourceProgram;
+	lightSourceProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/LightSource.vs"));
+	lightSourceProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/LightSource.fs"));
+	lightSourceProgram.Link();
+
+	lightSourceProgram.DetectAttribute("pos");
+	lightSourceProgram.DetectUniform("M");
+	lightSourceProgram.DetectUniform("V");
+	lightSourceProgram.DetectUniform("P");
+
+	GPUProgram depthProgram;
+	depthProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/shadow/simpledepthbuffer.vs"));
+	depthProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/shadow/simpledepthbuffer.fs"));
+	depthProgram.Link();
+
+	depthProgram.DetectAttribute("pos");
+	depthProgram.DetectUniform("M");
+	depthProgram.DetectUniform("V");
+	depthProgram.DetectUniform("P");
+
+	GPUProgram gpuProgram;
+	gpuProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/Light.vs"));
+	gpuProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/HDRLight.fs"));
+	gpuProgram.Link();
+
+	gpuProgram.DetectAttribute("pos");
+	gpuProgram.DetectAttribute("texcoord");
+	gpuProgram.DetectAttribute("normal");
+	gpuProgram.DetectUniform("M");
+	gpuProgram.DetectUniform("V");
+	gpuProgram.DetectUniform("P");
+	gpuProgram.DetectUniform("NM");
+	gpuProgram.DetectUniform("U_AmbientLightColor");
+	gpuProgram.DetectUniform("U_AmbientMaterial");
+	gpuProgram.DetectUniform("U_DiffuseLightColor");
+	gpuProgram.DetectUniform("U_DiffuseMaterial");
+	gpuProgram.DetectUniform("U_SpecularLightColor");
+	gpuProgram.DetectUniform("U_SpecularMaterial");
+	gpuProgram.DetectUniform("U_LightPos");
+	gpuProgram.DetectUniform("U_EyePos");
+	gpuProgram.DetectUniform("U_LightDirection");
+	gpuProgram.DetectUniform("U_Cutoff");
+	gpuProgram.DetectUniform("U_DiffuseIntensity");
+	//init 3d model
+	ObjModel cube, quad, sphere;
+    cube.InitModel(S_PATH("resource/model/Cube.obj"));
+    quad.InitModel(S_PATH("resource/model/Quad.obj"));
+    sphere.InitModel(S_PATH("resource/model/Sphere.obj"));
+
+	float identity[] = {
+		1.0f,0,0,0,
+		0,1.0f,0,0,
+		0,0,1.0f,0,
+		0,0,0,1.0f
+	};
+	float ambientLightColor[] = { 0.4f,0.4f,0.4f,1.0f };
+	float ambientMaterial[] = { 0.2f,0.2f,0.2f,1.0f };
+	float diffuseLightColor[] = { 1.0f,1.0f,1.0f,1.0f };
+	float diffuseMaterial[] = { 0.6f,0.6f,0.6f,1.0f };
+	float diffuseIntensity = 1.0f;
+	float specularLightColor[] = { 1.0f,1.0f,1.0f,1.0f };
+	float specularMaterial[] = { 1.0f,1.0f,1.0f,1.0f };
+	float lightPos[] = { 0.0f,1.5f,0.0f,0.0f };
+	float spotLightDirection[] = { 0.0f,-1.0f,0.0f,128.0f };
+	float spotLightCutoff = 0.0f;// 15.0f;//degree
+	float eyePos[] = { 0.0f,0.0f,0.0f };
+
+	glm::mat4 model3 = glm::translate<float>(6.0f, 0.0f, -6.0f)*glm::rotate(-30.0f, 1.0f, 1.0f, 1.0f);
+	glm::mat4 normalMatrix3 = glm::inverseTranspose(model3);
+
+	glm::mat4 quadModel = glm::translate<float>(6.0f, -1.5f, -6.0f)*glm::rotate(-90.0f, 1.0f, 0.0f, 0.0f)*glm::scale(5.0f, 5.0f, 5.0f);
+	glm::mat4 quadNormalMatrix = glm::inverseTranspose(quadModel);
+
+	glm::mat4 sphereModel = glm::translate<float>(6.3f, 3.0f, -5.8f)*glm::scale(0.3f, 0.3f, 0.3f);
+	glm::mat4 sphereNormalMatrix = glm::inverseTranspose(sphereModel);
+
+	glm::mat4 projectionMatrix = glm::perspective(50.0f, (float)viewW / (float)viewH, 0.1f, 1000.0f);
+	glm::mat4 viewMatrix3 = glm::lookAt(glm::vec3(14.0f, 2.5f, -10.0f), glm::vec3(6.0f, 1.0f, -6.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+	glm::mat4 lightMatrix = glm::lookAt(glm::vec3(6.0f, 10.0f, -6.0f), glm::vec3(6.0f, 0.0f, -6.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+	glm::mat4 lightProjection = glm::ortho(-5.f, 5.f,-5.f, 5.0f,0.1f,15.0f);
+
+    FullScreenQuad fsq;
+	fsq.Init();
+	// fbo = new FBO[2];
+	// for (int i = 0; i < 2; i++)
+	// {
+	// 	fbo[i].AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGBA, viewportWidth, viewportHeight);
+	// 	fbo[i].AttachDepthBuffer("depth", viewportWidth, viewportHeight);
+	// 	fbo[i].Finish();
+	// }
+
+	FBO hdrFBO;
+	hdrFBO.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGB, viewW, viewH);
+	hdrFBO.AttachColorBuffer("hdrBuffer", GL_COLOR_ATTACHMENT1, GL_RGBA16F, viewW, viewH);
+	hdrFBO.AttachDepthBuffer("depth", viewW, viewH);
+	hdrFBO.Finish();
+
+	FBO depthFBO;
+	depthFBO.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGB, viewW, viewH);
+	depthFBO.AttachDepthBuffer("depth", viewW, viewH);
+	depthFBO.Finish();
+
+
+	ShowWindow(hwnd, SW_SHOW);
+	UpdateWindow(hwnd);
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+	glEnable(GL_DEPTH_TEST);
+	depthFBO.Bind();
+	glViewport(0, 0, viewW, viewH);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glUseProgram(depthProgram.GetGPUProgram());
+	glUniformMatrix4fv(depthProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(lightProjection));
+	glUniformMatrix4fv(depthProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(model3));
+	glUniformMatrix4fv(depthProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(lightMatrix));
+	cube.Bind(depthProgram.GetQualfiterLoc("pos"), depthProgram.GetQualfiterLoc("texcoord"), depthProgram.GetQualfiterLoc("normal"));
+	cube.Draw();
+
+	glUniformMatrix4fv(depthProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(quadModel));
+	quad.Bind(depthProgram.GetQualfiterLoc("pos"), depthProgram.GetQualfiterLoc("texcoord"), depthProgram.GetQualfiterLoc("normal"));
+	quad.Draw();
+
+	depthFBO.UnBind();
+	MSG msg;
+	while (true)
+	{
+		if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+		{
+			if (msg.message == WM_QUIT)
+			{
+				break;
+			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		hdrFBO.Bind();
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glUseProgram(gpuProgram.GetGPUProgram());
+		glUniformMatrix4fv(gpuProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+		glUniform4fv(gpuProgram.GetQualfiterLoc("U_AmbientLightColor"), 1, ambientLightColor);
+		glUniform4fv(gpuProgram.GetQualfiterLoc("U_AmbientMaterial"), 1, ambientMaterial);
+		glUniform4fv(gpuProgram.GetQualfiterLoc("U_DiffuseLightColor"), 1, diffuseLightColor);
+		glUniform4fv(gpuProgram.GetQualfiterLoc("U_DiffuseMaterial"), 1, diffuseMaterial);
+		glUniform4fv(gpuProgram.GetQualfiterLoc("U_SpecularLightColor"), 1, specularLightColor);
+		glUniform4fv(gpuProgram.GetQualfiterLoc("U_SpecularMaterial"), 1, specularMaterial);
+		glUniform3fv(gpuProgram.GetQualfiterLoc("U_EyePos"), 1, eyePos);
+		glUniform4fv(gpuProgram.GetQualfiterLoc("U_LightDirection"), 1, spotLightDirection);
+		glUniform1f(gpuProgram.GetQualfiterLoc("U_DiffuseIntensity"), diffuseIntensity);
+		//spot light
+		lightPos[0] = 0.0f;
+		lightPos[1] = 1.0f;
+		lightPos[2] = 0.0f;
+		lightPos[3] = 0.0f;
+		diffuseIntensity = 1.0f;
+		spotLightCutoff = 0.0f;//degree
+		glUniform4fv(gpuProgram.GetQualfiterLoc("U_LightPos"), 1, lightPos);
+		glUniform1f(gpuProgram.GetQualfiterLoc("U_DiffuseIntensity"), diffuseIntensity);
+		glUniform1f(gpuProgram.GetQualfiterLoc("U_Cutoff"), spotLightCutoff);
+		glUniformMatrix4fv(gpuProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(model3));
+		glUniformMatrix4fv(gpuProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix3));
+		glUniformMatrix4fv(gpuProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix3));
+		cube.Bind(gpuProgram.GetQualfiterLoc("pos"), gpuProgram.GetQualfiterLoc("texcoord"), gpuProgram.GetQualfiterLoc("normal"));
+		cube.Draw();
+
+		glUniformMatrix4fv(gpuProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(quadModel));
+		glUniformMatrix4fv(gpuProgram.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(quadNormalMatrix));
+		quad.Bind(gpuProgram.GetQualfiterLoc("pos"), gpuProgram.GetQualfiterLoc("texcoord"), gpuProgram.GetQualfiterLoc("normal"));
+		quad.Draw();
+
+		glUseProgram(lightSourceProgram.GetGPUProgram());
+		glUniformMatrix4fv(lightSourceProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(sphereModel));
+		glUniformMatrix4fv(lightSourceProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix3));
+		glUniformMatrix4fv(lightSourceProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+		sphere.Bind(lightSourceProgram.GetQualfiterLoc("pos"), lightSourceProgram.GetQualfiterLoc("texcoord"), lightSourceProgram.GetQualfiterLoc("normal"));
+		sphere.Draw();
+
+		hdrFBO.UnBind();
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//normal rgba
+		glUseProgram(originalProgram.GetGPUProgram());
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, hdrFBO.GetBuffer("color"));
+		glUniform1i(originalProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        fsq.DrawToQuarter(originalProgram.GetQualfiterLoc("pos"), originalProgram.GetQualfiterLoc("texcoord"), 0);
+
+		//hdr
+		glUseProgram(depthrendererProgram.GetGPUProgram());
+		glBindTexture(GL_TEXTURE_2D, depthFBO.GetBuffer("depth"));
+		glUniform1i(depthrendererProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        fsq.DrawToQuarter(depthrendererProgram.GetQualfiterLoc("pos"), depthrendererProgram.GetQualfiterLoc("texcoord"), 2);
+		//processed hdr image
+		// Blur(hdrFBO.GetBuffer("hdrBuffer"), 4);
+		//horizontal blur
+
+		//vertical blur
+		// glUseProgram(verticalProgram->GetGPUProgram());
+		// glBindTexture(GL_TEXTURE_2D, fbo[1].GetBuffer("color"));
+		// glUniform1i(verticalProgram->GetQualfiterLoc("U_MainTexture"), 0);
+		// fsq.DrawToLeftBottom(verticalProgram->GetQualfiterLoc("pos"), verticalProgram->GetQualfiterLoc("texcoord"));
+
+		//combine
+		// glUseProgram(combineProgram.GetGPUProgram());
+
+		// glActiveTexture(GL_TEXTURE0);
+		// glBindTexture(GL_TEXTURE_2D, hdrFBO.GetBuffer("color"));
+		// glUniform1i(combineProgram.GetQualfiterLoc("U_MainTexture"), 0);
+		// glActiveTexture(GL_TEXTURE1);
+		// glBindTexture(GL_TEXTURE_2D, fbo[1].GetBuffer("color"));
+		// glUniform1i(combineProgram.GetQualfiterLoc("U_HDRTexture"), 1);
+
+		// fsq.DrawToRightBottom(combineProgram.GetQualfiterLoc("pos"), combineProgram.GetQualfiterLoc("texcoord"));
+		glFlush();
+		SwapBuffers(dc);
+	}
+	return 0;
 }
 
 GLuint GLRenderer::Blur(FullScreenQuad& fsq, GLuint texture, int blurCount)
