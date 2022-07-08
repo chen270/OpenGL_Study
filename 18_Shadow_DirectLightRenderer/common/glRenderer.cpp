@@ -5047,7 +5047,8 @@ int GLRenderer::ShadowTest_DirectLight(HWND hwnd, HDC dc, int viewW, int viewH)
                                     "U_DiffuseLightColor", "U_DiffuseMaterial",
                                     "U_AmbientLightColor", "U_AmbientMaterial",
                                     "U_SpecularLightColor", "U_SpecularMaterial",
-                                    "U_EyePos", "U_SpotLightDirect", "U_CutOffAngle"});
+                                    "U_EyePos", "U_SpotLightDirect", "U_CutOffAngle",
+                                    "U_LightProjection", "U_LightViewMatrix", "U_ShadowMap"});
     GL_CHECK_ERROR;
 
     glm::mat4 modelA = glm::translate<float>(6.0f, 0.0f, -6.0f) * glm::rotate<float>(-30.0f, 1.0f, 1.0f, 1.0f);
@@ -5161,7 +5162,6 @@ int GLRenderer::ShadowTest_DirectLight(HWND hwnd, HDC dc, int viewW, int viewH)
         GL_CHECK_ERROR;
 
         glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_SpotLightDirect"), 1, spotLightDirection);
-        GL_CHECK_ERROR;
 
         // 聚光
         lightPos[0] = -1.8f;
@@ -5171,6 +5171,19 @@ int GLRenderer::ShadowTest_DirectLight(HWND hwnd, HDC dc, int viewW, int viewH)
         spotLightCutOffAngle = 0.0f;
         glUniform1f(gpuProgSpecular.GetQualfiterLoc("U_CutOffAngle"), spotLightCutOffAngle);
         glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_LightPos"), 1, lightPos);
+		GL_CHECK_ERROR;
+
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("U_LightProjection"),1, GL_FALSE, glm::value_ptr(lightProjectMatrix));
+        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("U_LightViewMatrix"), 1, GL_FALSE, glm::value_ptr(lightViewMatrix));
+		GL_CHECK_ERROR;
+
+		glBindTexture(GL_TEXTURE_2D, depthFBO.GetBuffer("depth"));
+		glUniform1i(gpuProgSpecular.GetQualfiterLoc("U_ShadowMap"), 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		GL_CHECK_ERROR;
+
+
+
         glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(modelA)); // M model,模型视图移动，
         glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));  // 投影
         GL_CHECK_ERROR;

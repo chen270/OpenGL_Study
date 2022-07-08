@@ -54,8 +54,13 @@ SOURCE_GROUP("include" FILES ${HEAD_LIST})
 FILE(GLOB  COMMON_LIST "./common/*.cpp" "./common/*.h")
 SOURCE_GROUP("common" FILES ${COMMON_LIST})
 
-FILE(GLOB  SHADER_LIST "./shader/*.*")
-SOURCE_GROUP("shader" FILES ${SHADER_LIST})
+FILE(GLOB_RECURSE  SHADER_LIST "shader/*.*") # 当前路径下, 自动添加文件夹
+foreach(_source IN ITEMS ${SHADER_LIST})
+    get_filename_component(_source_path "${_source}" PATH)
+    string(REPLACE "${CMAKE_SOURCE_DIR}" "" _group_path "${_source_path}")
+    string(REPLACE "/" "\\" _group_path "${_group_path}")
+    source_group("${_group_path}" FILES "${_source}")
+endforeach()
 
 
 SET(ALL_SOURCES
@@ -83,7 +88,7 @@ TARGET_LINK_LIBRARIES(${TARGET} "${PROJECT_SOURCE_DIR}/third_party/SOIL.lib")
 
 # add vscode launch.json for debug
 IF (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  # using Clang
+  # using Clang, TODO...
 ELSEIF (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   # using GCC
   configure_file("${PROJECT_SOURCE_DIR}/launch_gdb.json" "${PROJECT_SOURCE_DIR}/.vscode/launch.json" COPYONLY)
