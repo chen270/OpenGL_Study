@@ -5055,7 +5055,7 @@ int GLRenderer::ShadowTest_DirectLight(HWND hwnd, HDC dc, int viewW, int viewH)
     const float WH = static_cast<float>(viewW) / static_cast<float>(viewH);
     glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
     glm::mat4 normalMatrix = glm::inverseTranspose(modelA);
-    glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(8.0, 1.5f, -8.0f),
+    glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(7.0, 1.5f, -7.0f),
                                         glm::vec3(6.0f, -1.0f, -6.0f),
                                         glm::vec3(0.0f, 1.0f, 0.0f));
 
