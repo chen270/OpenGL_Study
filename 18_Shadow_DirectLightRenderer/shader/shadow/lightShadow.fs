@@ -18,7 +18,6 @@ uniform vec4 U_SpecularMaterial; // 环境光反射的材质
 uniform vec4 U_SpotLightDirect;
 uniform float U_CutOffAngle;
 
-
 // Shadow
 uniform sampler2D U_ShadowMap;
 in vec4 V_LightSpaceFragPos;
@@ -29,11 +28,15 @@ float CalculateShadow()
     fragPos = fragPos * 0.5 + vec3(0.5); // 取范围到 0 ~ 1
     float depthInShadowmap = texture(U_ShadowMap, fragPos.xy).r;
     float currentDepth = fragPos.z; // 当前摄像机下的深度
-    float shadow = currentDepth > depthInShadowmap ? 1.0 : 0.0;
+
+    // float bias = 0.005;
+    vec3 normal = normalize(V_Normal); // n vector
+    vec3 lightDir = normalize(U_LightPos.xyz - V_WorldPos.xyz);
+    float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
+
+    float shadow = currentDepth - bias > depthInShadowmap ? 1.0 : 0.0;
     return shadow;
 }
-
-
 
 void main()
 {

@@ -5055,8 +5055,8 @@ int GLRenderer::ShadowTest_DirectLight(HWND hwnd, HDC dc, int viewW, int viewH)
     const float WH = static_cast<float>(viewW) / static_cast<float>(viewH);
     glm::mat4 projection = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
     glm::mat4 normalMatrix = glm::inverseTranspose(modelA);
-    glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(14.0, 2.5f, -10.0f),
-                                        glm::vec3(6.0f, 1.0f, -6.0f),
+    glm::mat4 viewMatrix1 = glm::lookAt(glm::vec3(8.0, 1.5f, -8.0f),
+                                        glm::vec3(6.0f, -1.0f, -6.0f),
                                         glm::vec3(0.0f, 1.0f, 0.0f));
 
     // 求光线的相关矩阵，方便后续求深度图
@@ -5179,7 +5179,7 @@ int GLRenderer::ShadowTest_DirectLight(HWND hwnd, HDC dc, int viewW, int viewH)
 
 		glBindTexture(GL_TEXTURE_2D, depthFBO.GetBuffer("depth"));
 		glUniform1i(gpuProgSpecular.GetQualfiterLoc("U_ShadowMap"), 0);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		// glBindTexture(GL_TEXTURE_2D, 0);
 		GL_CHECK_ERROR;
 
 
