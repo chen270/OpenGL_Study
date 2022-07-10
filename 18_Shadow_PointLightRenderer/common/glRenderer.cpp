@@ -5257,13 +5257,13 @@ int GLRenderer::ShadowTest_DirectLight(HWND hwnd, HDC dc, int viewW, int viewH)
     return 0;
 }
 
-int GLRenderer::ShadowTest_SpotLight(HWND hwnd, HDC dc, int viewW, int viewH)
+int GLRenderer::ShadowTest_PointLight(HWND hwnd, HDC dc, int viewW, int viewH)
 {
     // init
     // 0.get Program
     GPUProgram gpuProgSpecular;
-    gpuProgSpecular.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/shadow/lightShadow.vs"));
-    gpuProgSpecular.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/shadow/lightShadow.fs"));
+    gpuProgSpecular.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/shadow/lightShadow_point.vs"));
+    gpuProgSpecular.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/shadow/lightShadow_point.fs"));
     gpuProgSpecular.Link();
     GL_CHECK_ERROR;
 
@@ -5277,7 +5277,7 @@ int GLRenderer::ShadowTest_SpotLight(HWND hwnd, HDC dc, int viewW, int viewH)
     float eyePos[] = {0.0f, 0.0f, 0.0f};
     float spotLightDirection[] = {0.0f, -1.0f, 0.0f, 128.0f};
     float spotLightCutOffAngle = 0.0; // degree
-	float diffuseIntensity = 1.0f;
+	float diffuseIntensity = 1.5f;
 
     // 传递参数到shader
     gpuProgSpecular.DetectAttributes({"pos", "texcoord", "normal"});
@@ -5322,8 +5322,8 @@ int GLRenderer::ShadowTest_SpotLight(HWND hwnd, HDC dc, int viewW, int viewH)
     GL_CHECK_ERROR;
 
     GPUProgram testProgram;
-    testProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/light_bloom.vs"));
-    testProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/light_bloom.fs"));
+    testProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/test/sphere.vs"));
+    testProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/test/sphere.fs"));
     testProgram.Link();
     testProgram.DetectAttributes({"pos"});
     testProgram.DetectUniforms({"M", "V", "P"});
@@ -5339,7 +5339,7 @@ int GLRenderer::ShadowTest_SpotLight(HWND hwnd, HDC dc, int viewW, int viewH)
 
     GPUProgram depthRendererProgram;
     depthRendererProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
-    depthRendererProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/shadow/depthRenderer.fs"));
+    depthRendererProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/shadow/depthRenderer_point.fs"));
     depthRendererProgram.Link();
     depthRendererProgram.DetectAttributes({"pos", "texcoord"});
     depthRendererProgram.DetectUniforms({"U_MainTexture"});
@@ -5379,11 +5379,12 @@ int GLRenderer::ShadowTest_SpotLight(HWND hwnd, HDC dc, int viewW, int viewH)
                                         glm::vec3(0.0f, 1.0f, 0.0f));
 
     // 求光线的相关矩阵，方便后续求深度图
-    glm::mat4 lightViewMatrix = glm::lookAt(glm::vec3(6.0, 10.0f, -6.0f),
+    glm::mat4 lightViewMatrix = glm::lookAt(glm::vec3(lightPos[0], lightPos[1], lightPos[2]),
                                         glm::vec3(6.0f, 0.0f, -6.0f),
                                         glm::vec3(0.0f, 0.0f, -1.0f));
-    // 正射投影
-    glm::mat4 lightProjectMatrix = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f);
+    // 透视投影
+    // glm::mat4 lightProjectMatrix = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f);
+    glm::mat4 lightProjectMatrix = glm::perspective(90.0f, WH, 0.1f, 15.0f);
 
 
     glm::mat4 quadModel = glm::translate<float>(6.0f, -1.5f, -6.0f) * glm::rotate<float>(-90.0f, 1.0f, 0.0f, 0.0f)
@@ -5538,16 +5539,18 @@ int GLRenderer::ShadowTest_SpotLight(HWND hwnd, HDC dc, int viewW, int viewH)
         fsq.DrawToQuarter(depthRendererProgram.GetQualfiterLoc("pos"), depthRendererProgram.GetQualfiterLoc("texcoord"), 2); // 右上
         glBindTexture(GL_TEXTURE_2D, 0);
 
+#if 0 // 原版
         // 右上，HDR 图
-        //glUseProgram(hdrProgram.GetGPUProgram());
-        //glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("hdrBuffer"));
-        //glUniform1i(hdrProgram.GetQualfiterLoc("U_MainTexture"), 0);
-        //fsq.DrawToQuarter(hdrProgram.GetQualfiterLoc("pos"), hdrProgram.GetQualfiterLoc("texcoord"), 2);
-        //glBindTexture(GL_TEXTURE_2D, 0);
+        glUseProgram(originProgram.GetGPUProgram());
+        glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("color"));
+        glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        fsq.DrawToQuarter(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("texcoord"), 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
+#else // 添加模糊
         // 左下, HDR 高斯模糊图
         // 高斯模糊
-        GLuint blurRes = this->Blur(fsq, fboHDR.GetBuffer("hdrBuffer"), 10);
+        GLuint blurRes = this->Blur(fsq, fboHDR.GetBuffer("hdrBuffer"), 2);
 
         // 合成图
         glUseProgram(combineProgram.GetGPUProgram());
@@ -5559,7 +5562,8 @@ int GLRenderer::ShadowTest_SpotLight(HWND hwnd, HDC dc, int viewW, int viewH)
         glBindTexture(GL_TEXTURE_2D, blurRes);
         glUniform1i(combineProgram.GetQualfiterLoc("U_HDRTexture"), 1);
         fsq.DrawToQuarter(combineProgram.GetQualfiterLoc("pos"), combineProgram.GetQualfiterLoc("texcoord"), 0);
-        
+#endif
+
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, 0);
         glUseProgram(0); // 重置

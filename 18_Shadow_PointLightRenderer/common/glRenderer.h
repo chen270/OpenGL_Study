@@ -64,6 +64,7 @@ public:
     int    ShadowTest1(HWND hwnd, HDC dc, int viewW, int viewH); // 提取深度图
     int    ShadowTest1_Ref(HWND hwnd, HDC dc, int viewW, int viewH);
     int    ShadowTest_DirectLight(HWND hwnd, HDC dc, int viewW, int viewH);
+    int    ShadowTest_PointLight(HWND hwnd, HDC dc, int viewW, int viewH);
     int    ShadowTest_SpotLight(HWND hwnd, HDC dc, int viewW, int viewH);
 
 
