@@ -1,8 +1,8 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.8.0)
 
 
-PROJECT(19_Shadow_SpotLightRenderer)
-SET(TARGET "19_Shadow_SpotLightRenderer")
+PROJECT(19_Shadow_PointLightRenderer)
+SET(TARGET "19_Shadow_PointLightRenderer")
 
 add_compile_definitions(UNICODE _UNICODE)
 
