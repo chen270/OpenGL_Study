@@ -5900,15 +5900,15 @@ int GLRenderer::Projector(HWND hwnd, HDC dc, int viewW, int viewH)
     // init
     // 0.get Program
     GPUProgram projectorTexProg;
-    projectorTexProg.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/projector.vs"));
-    projectorTexProg.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/projector.fs"));
+    projectorTexProg.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/projector/projector.vs"));
+    projectorTexProg.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/projector/projector.fs"));
     projectorTexProg.Link();
     GL_CHECK_ERROR;
 
     // 传递参数到shader
     projectorTexProg.DetectAttributes({"pos", "texcoord", "normal"});
-    projectorTexProg.DetectUniforms({"M", "V", "P",
-                                    "U_MainTexture", "U_ProjectorMatrix", "U_ShadowMap"});
+    projectorTexProg.DetectUniforms({"M", "V", "P", "U_ProjectNoTransScaleMatrix",
+                                    "U_MainTexture", "U_ProjectorMatrix", "U_ShadowMap", "U_ProjectiveTexture"});
 
 
     GPUProgram originProgram;
@@ -5919,20 +5919,20 @@ int GLRenderer::Projector(HWND hwnd, HDC dc, int viewW, int viewH)
     originProgram.DetectUniforms({"U_MainTexture"});
     GL_CHECK_ERROR;
 
-    GPUProgram combineProgram;
-    combineProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
-    combineProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/combineHDRAndNormal.fs"));
-    combineProgram.Link();
-    combineProgram.DetectAttributes({"pos", "texcoord"});
-    combineProgram.DetectUniforms({"U_MainTexture","U_HDRTexture"});
-    GL_CHECK_ERROR;
+    // GPUProgram combineProgram;
+    // combineProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/fullscreenQuad.vs"));
+    // combineProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/combineHDRAndNormal.fs"));
+    // combineProgram.Link();
+    // combineProgram.DetectAttributes({"pos", "texcoord"});
+    // combineProgram.DetectUniforms({"U_MainTexture","U_HDRTexture"});
+    // GL_CHECK_ERROR;
 
-    GPUProgram testProgram;
-    testProgram.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/test/sphere.vs"));
-    testProgram.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/test/sphere.fs"));
-    testProgram.Link();
-    testProgram.DetectAttributes({"pos"});
-    testProgram.DetectUniforms({"M", "V", "P"});
+    GPUProgram sampleProg;
+    sampleProg.AttachShader(GL_VERTEX_SHADER, S_PATH("shader/projector/sample.vs"));
+    sampleProg.AttachShader(GL_FRAGMENT_SHADER, S_PATH("shader/projector/sample.fs"));
+    sampleProg.Link();
+    sampleProg.DetectAttributes({"pos", "texcoord"});
+    sampleProg.DetectUniforms({"M", "V", "P", "U_MainTexture"});
     GL_CHECK_ERROR;
 
     GPUProgram depthProgram; // 只需要知道几何信息即可, 谁在前谁在后
@@ -5955,19 +5955,11 @@ int GLRenderer::Projector(HWND hwnd, HDC dc, int viewW, int viewH)
     fsq.Init();
     this->BlurInit(viewW, viewH);
 
-    FBO fboDirectionLight;
-    // sRGBA: r 8bit 0~255(0~1.0)
-    fboDirectionLight.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGBA, viewW, viewH);
-    fboDirectionLight.AttachDepthBuffer("depth", viewW, viewH);
-    fboDirectionLight.Finish();
-
-
-    FBO fboHDR;
-    fboHDR.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGBA, viewW, viewH);
-    fboHDR.AttachColorBuffer("hdrBuffer", GL_COLOR_ATTACHMENT1, GL_RGBA16F, viewW, viewH);
-    fboHDR.AttachDepthBuffer("depth", viewW, viewH);
-    fboHDR.Finish();
-    GL_CHECK_ERROR
+    // FBO fboDirectionLight;
+    // // sRGBA: r 8bit 0~255(0~1.0)
+    // fboDirectionLight.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGBA, viewW, viewH);
+    // fboDirectionLight.AttachDepthBuffer("depth", viewW, viewH);
+    // fboDirectionLight.Finish();
 
     // model
     ObjModel cube, quad, sphere;
@@ -5984,8 +5976,20 @@ int GLRenderer::Projector(HWND hwnd, HDC dc, int viewW, int viewH)
                                         glm::vec3(6.0f, -1.0f, -6.0f),
                                         glm::vec3(0.0f, 1.0f, 0.0f));
 
+
+    // 投影矩阵
+    glm::mat4 projectorProjectionMatrix = glm::perspective(50.0f, WH, 0.1f, 1000.0f);
+    glm::mat4 projectorViewMatrix = glm::lookAt(glm::vec3(0.0, 4.0f, 0.0f),
+                                        glm::vec3(6.0f, -1.0f, -6.0f),
+                                        glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 projectiveMatrix = glm::translate<float>(0.5f, 0.5f, 0.5f) * glm::scale<float>(0.5f, 0.5f, 0.5f)
+     * projectorProjectionMatrix * projectorViewMatrix; // 插值, 先缩放到 -0.5 - 0.5，然后偏移到 0 ~ 1
+    glm::mat4 projectiveOriginalMatrix = projectorProjectionMatrix * projectorViewMatrix;
+    // glm::mat4 projectiveMatrix = glm::translate<float>(0.5f, 0.5f, 0.5f) * glm::scale<float>(0.5f, 0.5f, 0.5f)
+    //  * projection * viewMatrix1; // 插值, 先缩放到 -0.5 - 0.5，然后偏移到 0 ~ 1
+
     // 求光线的相关矩阵，方便后续求深度图
-    glm::mat4 lightViewMatrix = glm::lookAt(glm::vec3(lightPos[0], lightPos[1], lightPos[2]),
+    glm::mat4 lightViewMatrix = glm::lookAt(glm::vec3(0.0f,0.0f,0.0f),
                                         glm::vec3(6.0f, 0.0f, -6.0f),
                                         glm::vec3(0.0f, 0.0f, -1.0f));
     // 透视投影
@@ -5994,10 +5998,10 @@ int GLRenderer::Projector(HWND hwnd, HDC dc, int viewW, int viewH)
 
 
     glm::mat4 quadModel = glm::translate<float>(6.0f, -1.5f, -6.0f) * glm::rotate<float>(-90.0f, 1.0f, 0.0f, 0.0f)
-        * glm::scale<float>(4.0f,4.0f,4.0f);
+        * glm::scale<float>(10.0f,10.0f,10.0f);
     glm::mat4 quadNormalMat = glm::inverseTranspose(quadModel);
 
-    glm::mat4 sphereModel = glm::translate<float>(lightPos[0], lightPos[1], lightPos[2])*glm::scale<float>(0.2f,0.2f,0.2f);
+    glm::mat4 sphereModel = glm::translate<float>(0.0f,0.0f,0.0f)*glm::scale<float>(0.2f,0.2f,0.2f);
     glm::mat4 sphereNormalMat = glm::inverseTranspose(sphereModel);
 
     // 第一帧拿到 depthFBU 上，这样就能拿到深度图
@@ -6005,6 +6009,18 @@ int GLRenderer::Projector(HWND hwnd, HDC dc, int viewW, int viewH)
     depthFBO.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGB, viewW, viewH);
     depthFBO.AttachDepthBuffer("depth", viewW, viewH);
     depthFBO.Finish();
+
+    // 原场景
+    FBO originalFBO;
+    originalFBO.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGB, viewW, viewH);
+    originalFBO.AttachDepthBuffer("depth", viewW, viewH);
+    originalFBO.Finish();
+
+    // 投影场景
+    FBO projectiveTexFBO;
+    projectiveTexFBO.AttachColorBuffer("color", GL_COLOR_ATTACHMENT0, GL_RGB, viewW, viewH);
+    projectiveTexFBO.AttachDepthBuffer("depth", viewW, viewH);
+    projectiveTexFBO.Finish();
 
     // opengl 环境设置
     glClearColor(41.0f / 255.0f, 71.0f / 255.0f, 121.0f / 255.0f, 1.0f);
@@ -6021,12 +6037,16 @@ int GLRenderer::Projector(HWND hwnd, HDC dc, int viewW, int viewH)
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
 #if 1 // 拿取第一帧信息
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT);
+
     depthFBO.Bind();
+    glViewport(0, 0, viewW, viewH);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(depthProgram.GetGPUProgram());
-    glUniformMatrix4fv(depthProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(lightViewMatrix));
-    glUniformMatrix4fv(depthProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(lightProjectMatrix));
+    glUniformMatrix4fv(depthProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(projectorViewMatrix));
+    glUniformMatrix4fv(depthProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projectorProjectionMatrix));
     GL_CHECK_ERROR;
 
     glUniformMatrix4fv(depthProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(modelA));
@@ -6038,6 +6058,74 @@ int GLRenderer::Projector(HWND hwnd, HDC dc, int viewW, int viewH)
     quad.Draw();
 
     depthFBO.UnBind();
+    glCullFace(GL_BACK);
+
+    glUseProgram(0);
+#endif
+
+    GLuint mainTex = SOIL_load_OGL_texture(S_PATH("resource/image/stone.bmp"), 0, 0, SOIL_FLAG_POWER_OF_TWO);
+    GLuint projectiveTex = SOIL_load_OGL_texture(S_PATH("resource/image/wood.bmp"), 0, 0, SOIL_FLAG_POWER_OF_TWO);
+
+#if 1 // 原始场景, ok
+    originalFBO.Bind();
+    glViewport(0, 0, viewW, viewH);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glUseProgram(sampleProg.GetGPUProgram());
+    glUniformMatrix4fv(sampleProg.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));
+    glUniformMatrix4fv(sampleProg.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));
+    GL_CHECK_ERROR;
+
+    glUniformMatrix4fv(sampleProg.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(modelA));
+    glBindTexture(GL_TEXTURE_2D, mainTex);
+    glUniform1i(sampleProg.GetQualfiterLoc("U_MainTexture"), 0);
+
+    cube.Bind(sampleProg.GetQualfiterLoc("pos"), sampleProg.GetQualfiterLoc("texcoord"), sampleProg.GetQualfiterLoc("normal"));
+    cube.Draw();
+
+    glUniformMatrix4fv(sampleProg.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(quadModel)); // M model,模型视图移动，
+    quad.Bind(sampleProg.GetQualfiterLoc("pos"), sampleProg.GetQualfiterLoc("texcoord"), sampleProg.GetQualfiterLoc("normal"));
+    quad.Draw();
+
+    originalFBO.UnBind();
+    glBindTexture(GL_TEXTURE_2D, 0);
+#endif
+
+
+#if 1 // 投影场景, ok
+    projectiveTexFBO.Bind();
+    glViewport(0, 0, viewW, viewH);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glUseProgram(projectorTexProg.GetGPUProgram());
+    glUniformMatrix4fv(projectorTexProg.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));
+    glUniformMatrix4fv(projectorTexProg.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(projectorTexProg.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(modelA));
+    glUniformMatrix4fv(projectorTexProg.GetQualfiterLoc("U_ProjectorMatrix"), 1, GL_FALSE, glm::value_ptr(projectiveMatrix));
+    glUniformMatrix4fv(projectorTexProg.GetQualfiterLoc("U_ProjectNoTransScaleMatrix"), 1, GL_FALSE, glm::value_ptr(projectiveOriginalMatrix));
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, mainTex);
+    glUniform1i(projectorTexProg.GetQualfiterLoc("U_MainTexture"), 0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, projectiveTex);
+    glUniform1i(projectorTexProg.GetQualfiterLoc("U_ProjectiveTexture"), 1);
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, depthFBO.GetBuffer("depth"));
+    glUniform1i(projectorTexProg.GetQualfiterLoc("U_ShadowMap"), 2);
+
+    cube.Bind(projectorTexProg.GetQualfiterLoc("pos"), projectorTexProg.GetQualfiterLoc("texcoord"), projectorTexProg.GetQualfiterLoc("normal"));
+    cube.Draw();
+
+    glUniformMatrix4fv(projectorTexProg.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(quadModel)); // M model,模型视图移动，
+    quad.Bind(projectorTexProg.GetQualfiterLoc("pos"), projectorTexProg.GetQualfiterLoc("texcoord"), projectorTexProg.GetQualfiterLoc("normal"));
+    quad.Draw();
+
+    projectiveTexFBO.UnBind();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
 #endif
 
     // 防止程序退出
@@ -6056,119 +6144,37 @@ int GLRenderer::Projector(HWND hwnd, HDC dc, int viewW, int viewH)
 
         // ----OpenGL start-----
         // 编译命令
-        glUseProgram(gpuProgSpecular.GetGPUProgram());
-        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));    // V visual 视口
-        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
-        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));  // 投影
-	    
-        glUniform1f(gpuProgSpecular.GetQualfiterLoc("U_DiffuseIntensity"), diffuseIntensity);
-
-        // ambient
-        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_AmbientLightColor"), 1, ambientLightColor);
-        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_AmbientMaterial"), 1, ambientMaterial);
-
-        // diffuse
-        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_DiffuseLightColor"), 1, diffuseLightColor);
-        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_DiffuseMaterial"), 1, diffuseMaterial);
-        GL_CHECK_ERROR;
-
-        // specular
-        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_SpecularLightColor"), 1, specularLightColor);
-        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_SpecularMaterial"), 1, specularMaterial);
-        glUniform3fv(gpuProgSpecular.GetQualfiterLoc("U_EyePos"), 1, eyePos);
-        GL_CHECK_ERROR;
-
-        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_SpotLightDirect"), 1, spotLightDirection);
-
-        // 聚光
-        // lightPos[0] = -1.8f;
-        // lightPos[1] = 3.0f;
-        // lightPos[2] = -5.7f;
-        // lightPos[3] = 1.0f;
-        // spotLightCutOffAngle = 0.0f;
-        glUniform1f(gpuProgSpecular.GetQualfiterLoc("U_CutOffAngle"), spotLightCutOffAngle);
-        glUniform4fv(gpuProgSpecular.GetQualfiterLoc("U_LightPos"), 1, lightPos);
-		GL_CHECK_ERROR;
-
-        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("U_LightProjection"),1, GL_FALSE, glm::value_ptr(lightProjectMatrix));
-        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("U_LightViewMatrix"), 1, GL_FALSE, glm::value_ptr(lightViewMatrix));
-		GL_CHECK_ERROR;
-
-		glBindTexture(GL_TEXTURE_2D, depthFBO.GetBuffer("depth"));
-		glUniform1i(gpuProgSpecular.GetQualfiterLoc("U_ShadowMap"), 0);
-		// glBindTexture(GL_TEXTURE_2D, 0);
-		GL_CHECK_ERROR;
-
-
-
-        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(modelA)); // M model,模型视图移动，
-        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(normalMatrix));  // 投影
-        GL_CHECK_ERROR;
-        fboHDR.Bind();
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        cube.Bind(gpuProgSpecular.GetQualfiterLoc("pos"), gpuProgSpecular.GetQualfiterLoc("normal"));
-        cube.Draw();
-
-        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(quadModel)); // M model,模型视图移动，
-        glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(quadNormalMat));  // 投影
-        quad.Bind(gpuProgSpecular.GetQualfiterLoc("pos"), gpuProgSpecular.GetQualfiterLoc("normal"));
-        quad.Draw();
-
-        // glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(sphereModel)); // M model,模型视图移动，
-        // glUniformMatrix4fv(gpuProgSpecular.GetQualfiterLoc("NM"), 1, GL_FALSE, glm::value_ptr(sphereNormalMat));  // 投影
-        // sphere.Bind(gpuProgSpecular.GetQualfiterLoc("pos"), gpuProgSpecular.GetQualfiterLoc("normal"));
-
-
-        // glUseProgram(bloomProgram.GetGPUProgram());
-        // glUniformMatrix4fv(bloomProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));    // V visual 视口
-        // glUniformMatrix4fv(bloomProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
-        // glUniformMatrix4fv(bloomProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(sphereModel)); // M model,模型视图移动，
-        glUseProgram(testProgram.GetGPUProgram());
-        glUniformMatrix4fv(testProgram.GetQualfiterLoc("V"), 1, GL_FALSE, glm::value_ptr(viewMatrix1));    // V visual 视口
-        glUniformMatrix4fv(testProgram.GetQualfiterLoc("P"), 1, GL_FALSE, glm::value_ptr(projection));     // 投影
-        glUniformMatrix4fv(testProgram.GetQualfiterLoc("M"), 1, GL_FALSE, glm::value_ptr(sphereModel)); // M model,模型视图移动，
-        sphere.Bind(testProgram.GetQualfiterLoc("pos"));
-        sphere.Draw();
-
-        fboHDR.UnBind();
-        GL_CHECK_ERROR;
-        glUseProgram(0); // 重置
 
         // no blur
-        // glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(0.1f, 0.4f, 0.7f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // glUseProgram(depthRendererProgram.GetGPUProgram());
+        // glBindTexture(GL_TEXTURE_2D, depthFBO.GetBuffer("depth"));
+        // glUniform1i(depthRendererProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        // fsq.DrawToQuarter(depthRendererProgram.GetQualfiterLoc("pos"), depthRendererProgram.GetQualfiterLoc("texcoord"), 2); // 右上
+        // glBindTexture(GL_TEXTURE_2D, 0);
+
+        // 左上
+        glUseProgram(originProgram.GetGPUProgram());
+        glBindTexture(GL_TEXTURE_2D, originalFBO.GetBuffer("color"));
+        glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        fsq.DrawToQuarter(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("texcoord"), 0);
+        GL_CHECK_ERROR;
+
+        // 右上
+        glUseProgram(originProgram.GetGPUProgram());
+        glBindTexture(GL_TEXTURE_2D, projectiveTexFBO.GetBuffer("color"));
+        glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
+        fsq.DrawToQuarter(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("texcoord"), 2);
+        GL_CHECK_ERROR;
+
+        // 深度信息， 左下
         glUseProgram(depthRendererProgram.GetGPUProgram());
         glBindTexture(GL_TEXTURE_2D, depthFBO.GetBuffer("depth"));
         glUniform1i(depthRendererProgram.GetQualfiterLoc("U_MainTexture"), 0);
-        fsq.DrawToQuarter(depthRendererProgram.GetQualfiterLoc("pos"), depthRendererProgram.GetQualfiterLoc("texcoord"), 2); // 右上
-        glBindTexture(GL_TEXTURE_2D, 0);
-
-#if 0 // 原版
-        // 右上，HDR 图
-        glUseProgram(originProgram.GetGPUProgram());
-        glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("color"));
-        glUniform1i(originProgram.GetQualfiterLoc("U_MainTexture"), 0);
-        fsq.DrawToQuarter(originProgram.GetQualfiterLoc("pos"), originProgram.GetQualfiterLoc("texcoord"), 0);
-        glBindTexture(GL_TEXTURE_2D, 0);
-
-#else // 添加模糊
-        // 左下, HDR 高斯模糊图
-        // 高斯模糊
-        GLuint blurRes = this->Blur(fsq, fboHDR.GetBuffer("hdrBuffer"), 2);
-
-        // 合成图
-        glUseProgram(combineProgram.GetGPUProgram());
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("color"));
-        glUniform1i(combineProgram.GetQualfiterLoc("U_MainTexture"), 0);
-        glActiveTexture(GL_TEXTURE1);
-        // glBindTexture(GL_TEXTURE_2D, fboHDR.GetBuffer("hdrBuffer"));
-        glBindTexture(GL_TEXTURE_2D, blurRes);
-        glUniform1i(combineProgram.GetQualfiterLoc("U_HDRTexture"), 1);
-        fsq.DrawToQuarter(combineProgram.GetQualfiterLoc("pos"), combineProgram.GetQualfiterLoc("texcoord"), 0);
-#endif
+        fsq.DrawToQuarter(depthRendererProgram.GetQualfiterLoc("pos"), depthRendererProgram.GetQualfiterLoc("texcoord"), 1);
+        GL_CHECK_ERROR;
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, 0);
