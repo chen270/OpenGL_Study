@@ -28,12 +28,7 @@ int GLRenderer::GLInit()
 	  这样做能让GLEW在管理OpenGL的函数指针时更多地使用现代化的技术，
 	  如果把它设置为GL_FALSE的话可能会在使用OpenGL的核心模式时出现一些问题。
 	*/
-	glewExperimental = GL_TRUE;
-	if (glewInit() != GLEW_OK)
-	{
-		std::cout << "Failed to initialize GLEW" << std::endl;
-		return -1;
-	}
+	return 0;
 }
 
 int GLRenderer::LoadFileContent(const char* path, char** buf)

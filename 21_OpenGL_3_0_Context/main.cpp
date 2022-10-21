@@ -1,8 +1,6 @@
 #include <windows.h>
 #include <iostream>
 #include "GL/glew.h"
-#include "GL/wglew.h"
-#include <gl/GL.h>
 #include "utils/win32_common.h"
 #include "utils/glRenderer.h"
 
@@ -14,30 +12,13 @@
 
 int main()
 {
-	HINSTANCE hInstance = GetModuleHandle(NULL);
-
-	auto hWnd = CreateWindowEx(NULL, L"OpenGL", L"RenderWindow",
-		WS_OVERLAPPEDWINDOW, 0, 0,
-		512, 512, NULL, NULL, hInstance, NULL);
-
-	ShowWindow(hWnd, SW_SHOW);
-
-	// Just to send WM_SIZE message again
-	//ShowWindow(hWnd, SW_SHOWMAXIMIZED);
-	UpdateWindow(hWnd);
-
-
-	return 0;
-}
-
-int main2()
-{
     Win32Utils utils;
 	GLRenderer glRender;
 
-	HWND hwnd = utils.CreateWin32Window(800, 600);
-	//HDC dc = utils.bindWindowWithOpenGL();
-	HDC dc = utils.InitOpenGL_3_0(3,3);
+	HDC hdc;
+	HWND hwnd;
+	//utils.InitWindowAndGLContext(hdc, hwnd, 800, 600);
+	utils.InitWindowAndGL_3_0_Context(hdc, hwnd, 800, 600);
 	glRender.GLInit();
 
 	glClearColor(41.0f/255.0f, 71.0f/255.0f, 121.0f/255.0f, 1.0f);
@@ -74,7 +55,7 @@ int main2()
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
-		SwapBuffers(dc);
+		SwapBuffers(hdc);
 		// ----OpenGL end  -----
 	}
 

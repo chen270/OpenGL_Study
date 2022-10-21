@@ -6,8 +6,6 @@
 #include <gl/GL.h>
 
 
-
-
 class GLRenderer
 {
 public:

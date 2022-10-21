@@ -9,16 +9,11 @@ public:
     Win32Utils(/* args */);
     ~Win32Utils();
 
-    HWND CreateWin32Window(const int width, const int height);
-    HDC bindWindowWithOpenGL();
-    HDC bindWindowWithOpenGL_3_0();
-    HDC InitOpenGL_3_0(int iMajorVersion, int iMinorVersion);
-
-public:
-    HWND hwnd;
-    HDC  dc;
-	HGLRC hRC;
-
+    int InitWindowAndGLContext(HDC &_hdc, HWND &_hwnd, const int width, const int height);
+    int InitWindowAndGL_3_0_Context(HDC &_hdc, HWND &_hwnd, const int width, const int height,
+                                    int iMajorVersion = 3, int iMinorVersion = 3); // default 3.3 version
+private:
+    HGLRC m_hRC;
 };
 
 #endif // __WIN32_COMMON_H__

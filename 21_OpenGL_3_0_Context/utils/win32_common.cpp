@@ -11,201 +11,209 @@ Win32Utils::~Win32Utils()
 {
 }
 
-
-LRESULT CALLBACK GLWindowProc(HWND hwnd, UINT msg, WPARAM wparm, LPARAM lparm)
+static LRESULT CALLBACK GLWindowProc(HWND hwnd, UINT msg, WPARAM wparm, LPARAM lparm)
 {
-	switch (msg)
-	{
-	case WM_CLOSE:
-		PostQuitMessage(0);
-		break;
-	default:
-		break;
-	}
-	return DefWindowProc(hwnd, msg, wparm, lparm);
+    switch (msg)
+    {
+    case WM_CLOSE:
+        PostQuitMessage(0);
+        break;
+    default:
+        break;
+    }
+    return DefWindowProc(hwnd, msg, wparm, lparm);
 }
 
-HWND Win32Utils::CreateWin32Window(const int width, const int height)
+static HWND CreateWin32Window(const HINSTANCE _hinstance, const int width, const int height)
 {
-    HINSTANCE hinstance = GetModuleHandle(NULL);
-
     //注册窗口
-	WNDCLASSEX wndClass;
-	wndClass.cbClsExtra = 0;
-	wndClass.cbSize = sizeof(WNDCLASSEX);
-	wndClass.cbWndExtra = 0;
-	wndClass.hbrBackground = NULL;
-	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wndClass.hIcon = NULL; //LoadIcon(NULL, MAKEINTRESOURCE(IDI_APPLICATION));
-	wndClass.hIconSm = NULL;
-	wndClass.hInstance = hinstance;
-	wndClass.lpfnWndProc = GLWindowProc;
-	wndClass.lpszClassName = L"OpenGL";
-	wndClass.lpszMenuName = NULL;
-	wndClass.style = CS_VREDRAW | CS_HREDRAW;
-	ATOM atom = RegisterClassEx(&wndClass);
+    WNDCLASSEX wndClass;
+    wndClass.cbClsExtra = 0;
+    wndClass.cbSize = sizeof(WNDCLASSEX);
+    wndClass.cbWndExtra = 0;
+    wndClass.hbrBackground = NULL;
+    wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wndClass.hIcon = NULL; // LoadIcon(NULL, MAKEINTRESOURCE(IDI_APPLICATION));
+    wndClass.hIconSm = NULL;
+    wndClass.hInstance = _hinstance;
+    wndClass.lpfnWndProc = GLWindowProc;
+    wndClass.lpszClassName = L"OpenGL";
+    wndClass.lpszMenuName = NULL;
+    wndClass.style = CS_VREDRAW | CS_HREDRAW;
+    ATOM atom = RegisterClassEx(&wndClass);
 
     // Place the window in the middle of the screen.
-	int posX = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
-	int posY = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
+    int posX = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
+    int posY = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
 
-	this->hwnd = CreateWindowEx(NULL, L"OpenGL", L"RenderWindow", 
-                                WS_OVERLAPPEDWINDOW, posX, posY, 
-                                width, height, NULL, NULL, hinstance, NULL);
+    auto hwnd = CreateWindowEx(NULL, L"OpenGL", L"RenderWindow",
+                               WS_OVERLAPPEDWINDOW, posX, posY,
+                               width, height, NULL, NULL, _hinstance, NULL);
 
-    return this->hwnd;
+    return hwnd;
 }
 
-HDC Win32Utils::bindWindowWithOpenGL()
+static bool InitGLEW(const HINSTANCE hInstance, const HWND _hwnd)
 {
-	//----OpenGL 绑定windows窗口----------
-	this->dc = GetDC(this->hwnd);
-	PIXELFORMATDESCRIPTOR pfd;
-	memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
+    HWND hWndFake = CreateWin32Window(hInstance, 800, 600);
+    auto _hDC = GetDC(hWndFake);
 
-	pfd.nVersion = 1;
-	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_TYPE_RGBA | PFD_DOUBLEBUFFER;
-	pfd.iLayerType = PFD_MAIN_PLANE;
-	pfd.iPixelType = PFD_TYPE_RGBA;
-	pfd.cColorBits = 32;
-	pfd.cDepthBits = 24;
-	pfd.cStencilBits = 8;
+    // First, choose false pixel format
+    PIXELFORMATDESCRIPTOR pfd;
+    memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
+    pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    pfd.nVersion = 1;
+    pfd.dwFlags = PFD_DOUBLEBUFFER | PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 32;
+    pfd.cDepthBits = 32;
+    pfd.iLayerType = PFD_MAIN_PLANE;
 
-	int pixelFormatID = ChoosePixelFormat(dc, &pfd);
-	SetPixelFormat(dc, pixelFormatID, &pfd);
+    int iPixelFormat = ChoosePixelFormat(_hDC, &pfd);
+    if (iPixelFormat == 0)
+        return false;
 
-	HGLRC rc = wglCreateContext(dc);
-	wglMakeCurrent(dc, rc);
-	return this->dc;
+    if (!SetPixelFormat(_hDC, iPixelFormat, &pfd))
+        return false;
+
+    // Create the false, old style context (OpenGL 2.1 and before)
+    HGLRC hRCFake = wglCreateContext(_hDC);
+    wglMakeCurrent(_hDC, hRCFake);
+
+    bool bResult = true;
+
+    if (glewInit() != GLEW_OK)
+    {
+        MessageBox(_hwnd, L"Couldn't initialize GLEW!", L"Fatal Error", MB_ICONERROR);
+        bResult = false;
+    }
+
+    wglMakeCurrent(NULL, NULL);
+    wglDeleteContext(hRCFake);
+    DestroyWindow(hWndFake);
+
+    return bResult;
 }
 
-HDC Win32Utils::bindWindowWithOpenGL_3_0()
+int Win32Utils::InitWindowAndGLContext(HDC &_hdc, HWND &_hwnd, const int width, const int height)
 {
-	HINSTANCE hinstance = GetModuleHandle(NULL);
-	HWND hWndFake = CreateWindow(L"Simple_openGL_class", L"FAKE", WS_OVERLAPPEDWINDOW | WS_MAXIMIZE | WS_CLIPCHILDREN,
-		0, 0, CW_USEDEFAULT, CW_USEDEFAULT, NULL,
-		NULL, hinstance, NULL);
-	this->dc = GetDC(hWndFake);
+    // Window Init
+    auto hinstance = GetModuleHandle(NULL);
+    _hwnd = CreateWin32Window(hinstance, width, height);
+    _hdc = GetDC(_hwnd);
+    PIXELFORMATDESCRIPTOR pfd;
+    memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
 
-	// First, choose false pixel format
-	//PIXELFORMATDESCRIPTOR pfd;
-	//memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
-	//pfd.nVersion = 1;
-	//pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_TYPE_RGBA | PFD_DOUBLEBUFFER;
-	//pfd.iLayerType = PFD_MAIN_PLANE;
-	//pfd.iPixelType = PFD_TYPE_RGBA;
-	//pfd.cColorBits = 32;
-	//pfd.cDepthBits = 24;
-	//pfd.cStencilBits = 8;
+    pfd.nVersion = 1;
+    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_TYPE_RGBA | PFD_DOUBLEBUFFER;
+    pfd.iLayerType = PFD_MAIN_PLANE;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 32;
+    pfd.cDepthBits = 24;
+    pfd.cStencilBits = 8;
 
-	PIXELFORMATDESCRIPTOR pfd;
-	memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
-	pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-	pfd.nVersion = 1;
-	pfd.dwFlags = PFD_DOUBLEBUFFER | PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW;
-	pfd.iPixelType = PFD_TYPE_RGBA;
-	pfd.cColorBits = 32;
-	pfd.cDepthBits = 32;
-	pfd.iLayerType = PFD_MAIN_PLANE;
+    int pixelFormatID = ChoosePixelFormat(_hdc, &pfd);
+    SetPixelFormat(_hdc, pixelFormatID, &pfd);
 
-	int pixelFormatID = ChoosePixelFormat(dc, &pfd);
-	if (FALSE == SetPixelFormat(dc, pixelFormatID, &pfd))
-	{
-		MessageBox(hwnd, L"SetPixelFormat error", L"Fatal Error", MB_ICONERROR);
-		return NULL;
-	}
+    HGLRC rc = wglCreateContext(_hdc);
+    wglMakeCurrent(_hdc, rc);
 
-	HGLRC hRCFake = wglCreateContext(dc);
-	wglMakeCurrent(dc, hRCFake);
+    // glew Init
+    if (glewInit() != GLEW_OK)
+    {
+        MessageBox(_hwnd, L"Failed to initialize GLEW", L"Fatal Error", MB_ICONINFORMATION);
+        return -1;
+    }
 
-	if (glewInit() != GLEW_OK)
-	{
-		MessageBox(hwnd, L"Couldn't initialize GLEW!", L"Fatal Error", MB_ICONERROR);
-		return NULL;
-	}
-
-	wglMakeCurrent(NULL, NULL);
-	wglDeleteContext(hRCFake);
-	DestroyWindow(hWndFake);
-
-	return this->dc;
+    return 0;
 }
 
-HDC Win32Utils::InitOpenGL_3_0(int iMajorVersion, int iMinorVersion)
+int Win32Utils::InitWindowAndGL_3_0_Context(HDC &_hdc, HWND &_hwnd, const int width, const int height,
+                                            const int iMajorVersion, const int iMinorVersion) // default 3.3 version
 {
-	if (bindWindowWithOpenGL_3_0() == NULL)return NULL;
+    auto hinstance = GetModuleHandle(NULL);
+    _hwnd = CreateWin32Window(hinstance, 800, 600);
 
-	this->dc = GetDC(hwnd);
+    if (!InitGLEW(hinstance, _hwnd))
+        return -1;
 
-	bool bError = false;
-	PIXELFORMATDESCRIPTOR pfd;
-	if (iMajorVersion <= 2)
-	{
-		memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
-		pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-		pfd.nVersion = 1;
-		pfd.dwFlags = PFD_DOUBLEBUFFER | PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW;
-		pfd.iPixelType = PFD_TYPE_RGBA;
-		pfd.cColorBits = 32;
-		pfd.cDepthBits = 32;
-		pfd.iLayerType = PFD_MAIN_PLANE;
+    _hdc = GetDC(_hwnd);
 
-		int iPixelFormat = ChoosePixelFormat(dc, &pfd);
-		if (iPixelFormat == 0)return false;
+    bool bError = false;
+    PIXELFORMATDESCRIPTOR pfd;
 
-		if (!SetPixelFormat(dc, iPixelFormat, &pfd))return false;
+    if (iMajorVersion <= 2)
+    {
+        memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
+        pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+        pfd.nVersion = 1;
+        pfd.dwFlags = PFD_DOUBLEBUFFER | PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW;
+        pfd.iPixelType = PFD_TYPE_RGBA;
+        pfd.cColorBits = 32;
+        pfd.cDepthBits = 32;
+        pfd.iLayerType = PFD_MAIN_PLANE;
 
-		// Create the old style context (OpenGL 2.1 and before)
-		hRC = wglCreateContext(dc);
-		if (hRC)wglMakeCurrent(dc, hRC);
-		else bError = true;
-	}
-	else if (WGLEW_ARB_create_context && WGLEW_ARB_pixel_format)
-	{
-		const int iPixelFormatAttribList[] =
-		{
-			WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
-			WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
-			WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
-			WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
-			WGL_COLOR_BITS_ARB, 32,
-			WGL_DEPTH_BITS_ARB, 24,
-			WGL_STENCIL_BITS_ARB, 8,
-			0 // End of attributes list
-		};
-		int iContextAttribs[] =
-		{
-			WGL_CONTEXT_MAJOR_VERSION_ARB, iMajorVersion,
-			WGL_CONTEXT_MINOR_VERSION_ARB, iMinorVersion,
-			WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
-			0 // End of attributes list
-		};
+        int iPixelFormat = ChoosePixelFormat(_hdc, &pfd);
+        if (iPixelFormat == 0)
+            return false;
 
-		int iPixelFormat, iNumFormats;
-		wglChoosePixelFormatARB(dc, iPixelFormatAttribList, NULL, 1, &iPixelFormat, (UINT*)&iNumFormats);
+        if (!SetPixelFormat(_hdc, iPixelFormat, &pfd))
+            return false;
 
-		// PFD seems to be only redundant parameter now
-		if (!SetPixelFormat(dc, iPixelFormat, &pfd))return false;
+        // Create the old style context (OpenGL 2.1 and before)
+        m_hRC = wglCreateContext(_hdc);
+        if (m_hRC)
+            wglMakeCurrent(_hdc, m_hRC);
+        else
+            bError = true;
+    }
+    else if (WGLEW_ARB_create_context && WGLEW_ARB_pixel_format)
+    {
+        const int iPixelFormatAttribList[] =
+            {
+                WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+                WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+                WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+                WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+                WGL_COLOR_BITS_ARB, 32,
+                WGL_DEPTH_BITS_ARB, 24,
+                WGL_STENCIL_BITS_ARB, 8,
+                0 // End of attributes list
+            };
+        int iContextAttribs[] =
+            {
+                WGL_CONTEXT_MAJOR_VERSION_ARB, iMajorVersion,
+                WGL_CONTEXT_MINOR_VERSION_ARB, iMinorVersion,
+                WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
+                0 // End of attributes list
+            };
 
-		hRC = wglCreateContextAttribsARB(dc, 0, iContextAttribs);
-		// If everything went OK
-		if (hRC) wglMakeCurrent(dc, hRC);
-		else bError = true;
+        int iPixelFormat, iNumFormats;
+        wglChoosePixelFormatARB(_hdc, iPixelFormatAttribList, NULL, 1, &iPixelFormat, (UINT *)&iNumFormats);
 
-	}
-	else 
-		bError = true;
+        // PFD seems to be only redundant parameter now
+        if (!SetPixelFormat(_hdc, iPixelFormat, &pfd))
+            return false;
 
-	if (bError)
-	{
-		// Generate error messages
-		//char sErrorMessage[255], sErrorTitle[255];
-		//sprintf(sErrorMessage, "OpenGL %d.%d is not supported! Please download latest GPU drivers!", iMajorVersion, iMinorVersion);
-		//sprintf(sErrorTitle, "OpenGL %d.%d Not Supported", iMajorVersion, iMinorVersion);
-		//MessageBox(hwnd, sErrorMessage, sErrorTitle, MB_ICONINFORMATION);
-		MessageBox(hwnd, L"OpenGL Not Supported", L"Fatal Error", MB_ICONERROR);
-		return NULL;
-	}
+        m_hRC = wglCreateContextAttribsARB(_hdc, 0, iContextAttribs);
+        // If everything went OK
+        if (m_hRC)
+            wglMakeCurrent(_hdc, m_hRC);
+        else
+            bError = true;
+    }
+    else
+        bError = true;
 
-	return this->dc;
+    if (bError)
+    {
+        // Generate error messages
+        wchar_t sErrorMessage[255], sErrorTitle[255];
+        wsprintf(sErrorMessage, L"OpenGL %d.%d is not supported! Please download latest GPU drivers!", iMajorVersion, iMinorVersion);
+        wsprintf(sErrorTitle, L"OpenGL %d.%d Not Supported", iMajorVersion, iMinorVersion);
+        MessageBox(_hwnd, sErrorMessage, sErrorTitle, MB_ICONINFORMATION);
+        return NULL;
+    }
+
+    return 0;
 }
